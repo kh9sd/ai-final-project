@@ -19,6 +19,9 @@ class MinesweeperEnv(object):
         self.rewards = rewards
 
     def init_grid(self):
+        # B is for a bomb tile
+        # U is for an unsolved tile
+
         board = np.zeros((self.nrows, self.ncols), dtype='object')
         mines = self.n_mines
 
@@ -119,9 +122,10 @@ class MinesweeperEnv(object):
         state = state_im * 8.0
         state_df = pd.DataFrame(state.reshape((self.nrows, self.ncols)), dtype=np.int8)
 
-        display(state_df.style.applymap(self.color_state))
+        display(state_df.style.map(self.color_state))
 
     def click(self, action_index):
+        #print(f"{self.state=}")
         coord = self.state[action_index]['coord']
         value = self.board[coord]
 
