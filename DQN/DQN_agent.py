@@ -14,21 +14,24 @@ from minesweeper_env import *
 #from DQN import *
 
 
+import torch
 from torch.nn import Conv2d, ReLU, Flatten, Linear, Sequential, LazyLinear
 import torch.nn as nn
 import torch.optim as optim
+
+torch.set_default_device('cuda')
 
 def create_dqn(learn_rate, input_dims, n_actions, conv_units, dense_units):
     print(f"{input_dims=} {conv_units=}")
     model = Sequential(
                 Conv2d(1, conv_units, kernel_size=3,  padding='same'),
                 ReLU(),
-                Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
-                ReLU(),
-                Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
-                ReLU(),
-                Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
-                ReLU(),
+                # Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
+                # ReLU(),
+                # Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
+                # ReLU(),
+                # Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
+                # ReLU(),
                 Flatten(),
                 # TODO: def need to change this 1
                 LazyLinear(dense_units),
@@ -66,6 +69,9 @@ UPDATE_TARGET_EVERY = 5
 # Default model name
 MODEL_NAME = f'conv{CONV_UNITS}x4_dense{DENSE_UNITS}x2_y{DISCOUNT}_minlr{LEARN_MIN}'
 
+def NHWC_to_NHWC(tensor):
+    return tensor.permute(0, 3, 1, 2) # from NHWC to NCHW
+
 class DQNAgent(object):
     def __init__(self, env, model_name=MODEL_NAME, conv_units=64, dense_units=256):
         self.env = env
@@ -85,7 +91,8 @@ class DQNAgent(object):
             self.learn_rate, self.env.state_im.shape, self.env.ntiles, conv_units, dense_units)
     
         #self.target_model.set_weights(self.model.get_weights())
-        self.target_model.load_state_dict(self.target_model.state_dict())
+        self.target_model.load_state_dict(self.model.state_dict())
+        self.target_model.eval()
 
         self.replay_memory = deque(maxlen=MEM_SIZE)
         self.target_update_counter = 0
@@ -94,18 +101,31 @@ class DQNAgent(object):
         #     log_dir=f'logs\\{model_name}', profile_batch=0)
 
     def get_action(self, state):
-        board = state.reshape(1, self.env.ntiles)
-        unsolved = [i for i, x in enumerate(board[0]) if x==-0.125]
+        self.model.eval()
 
-        rand = np.random.random() # random value b/w 0 & 1
+        with torch.no_grad(): 
+            board = state.reshape(1, self.env.ntiles)
+            unsolved = [i for i, x in enumerate(board[0]) if x==-0.125]
 
-        if rand < self.epsilon: # random move (explore)
-            move = np.random.choice(unsolved)
-        else:
-            #moves = self.model.predict(np.reshape(state, (1, self.env.nrows, self.env.ncols, 1)))
-            moves = self.model(np.reshape(state, (1, self.env.nrows, self.env.ncols, 1)))
-            moves[board!=-0.125] = np.min(moves) # set already clicked tiles to min value
-            move = np.argmax(moves)
+            rand = np.random.random() # random value b/w 0 & 1
+
+            if rand < self.epsilon: # random move (explore)
+                move = np.random.choice(unsolved)
+            else:
+                #moves = self.model.predict(np.reshape(state, (1, self.env.nrows, self.env.ncols, 1)))
+                # pytorch expects of 
+                reshaped_state = np.reshape(state, (1, self.env.nrows, self.env.ncols, 1))
+                # print(f"{reshaped_state.shape=}")
+                shit_tensor = NHWC_to_NHWC(torch.tensor(reshaped_state))
+                #shit_tensor = NHWC_to_NHWC(torch.tensor(reshaped_state, dtype=torch.half))
+                # print(f"{shit_tensor=}")
+                shit_tensor = shit_tensor.type(torch.cuda.FloatTensor)
+                moves = self.model(shit_tensor)
+
+                # convert back to numpy
+                moves = moves.detach().cpu().numpy()
+                moves[board!=-0.125] = np.min(moves) # set already clicked tiles to min value
+                move = np.argmax(moves)
 
         return move
 
@@ -113,6 +133,8 @@ class DQNAgent(object):
         self.replay_memory.append(transition)
 
     def train(self, done: bool):
+        self.model.train() 
+
         if len(self.replay_memory) < MEM_SIZE_MIN:
             return
 
@@ -159,7 +181,8 @@ class DQNAgent(object):
             self.target_update_counter += 1
 
         if self.target_update_counter > UPDATE_TARGET_EVERY:
-            self.target_model.set_weights(self.model.get_weights())
+            # self.target_model.set_weights(self.model.get_weights())
+            self.target_model.load_state_dict(self.model.state_dict())
             self.target_update_counter = 0
 
         # decay learn_rate
