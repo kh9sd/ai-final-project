@@ -9,7 +9,7 @@ warnings.filterwarnings('ignore')
 from collections import deque
 from minesweeper_env import *
 # use my_tensorboard2.py if using tensorflow v2+, use my_tensorboard.py otherwise
-from my_tensorboard2 import *
+# from my_tensorboard2 import *
 #from DQN import *
 
 

@@ -1,9 +1,9 @@
 import argparse, pickle
 from tqdm import tqdm
-from keras.models import load_model
+# from keras.models import load_model
 from DQN_agent import *
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # intake MinesweeperEnv parameters, beginner mode by default
 def parse_args():
@@ -28,14 +28,16 @@ SAVE_MODEL_EVERY = 10_000 # save model and replay every 10,000 episodes
 
 def main():
     env = MinesweeperEnv(params.width, params.height, params.n_mines)
-    agent = DQNAgent(env, params.model_name)
+    # TODO: model name
+    #agent = DQNAgent(env, params.model_name)
+    agent = DQNAgent(env, "BULLSHIT")
 
     progress_list, wins_list, ep_rewards = [], [], []
     n_clicks = 0
 
     # an episode is just a minesweeper game (from start to end/done)
     for episode in tqdm(range(1, params.episodes+1), unit='episode'):
-        agent.tensorboard.step = episode
+        # agent.tensorboard.step = episode
 
         env.reset()
         episode_reward = 0
@@ -72,12 +74,12 @@ def main():
             win_rate = round(np.sum(wins_list[-AGG_STATS_EVERY:]) / AGG_STATS_EVERY, 2)
             med_reward = round(np.median(ep_rewards[-AGG_STATS_EVERY:]), 2)
 
-            agent.tensorboard.update_stats(
-                progress_med = med_progress,
-                winrate = win_rate,
-                reward_med = med_reward,
-                learn_rate = agent.learn_rate,
-                epsilon = agent.epsilon)
+            # agent.tensorboard.update_stats(
+            #     progress_med = med_progress,
+            #     winrate = win_rate,
+            #     reward_med = med_reward,
+            #     learn_rate = agent.learn_rate,
+            #     epsilon = agent.epsilon)
 
             print(f'Episode: {episode}, Median progress: {med_progress}, Median reward: {med_reward}, Win rate : {win_rate}')
 
