@@ -72,6 +72,14 @@ MODEL_NAME = f'conv{CONV_UNITS}x4_dense{DENSE_UNITS}x2_y{DISCOUNT}_minlr{LEARN_M
 def NHWC_to_NHWC(tensor):
     return tensor.permute(0, 3, 1, 2) # from NHWC to NCHW
 
+
+def numpy_state_batch_to_tensor_state_batch(numpy_arr):
+    shit_tensor = NHWC_to_NHWC(torch.tensor(numpy_arr))
+    #shit_tensor = NHWC_to_NHWC(torch.tensor(reshaped_state, dtype=torch.half))
+    # print(f"{shit_tensor=}")
+    shit_tensor = shit_tensor.type(torch.cuda.FloatTensor)
+    return shit_tensor
+
 class DQNAgent(object):
     def __init__(self, env, model_name=MODEL_NAME, conv_units=64, dense_units=256):
         self.env = env
@@ -116,10 +124,8 @@ class DQNAgent(object):
                 # pytorch expects of 
                 reshaped_state = np.reshape(state, (1, self.env.nrows, self.env.ncols, 1))
                 # print(f"{reshaped_state.shape=}")
-                shit_tensor = NHWC_to_NHWC(torch.tensor(reshaped_state))
-                #shit_tensor = NHWC_to_NHWC(torch.tensor(reshaped_state, dtype=torch.half))
-                # print(f"{shit_tensor=}")
-                shit_tensor = shit_tensor.type(torch.cuda.FloatTensor)
+                shit_tensor = numpy_state_batch_to_tensor_state_batch(reshaped_state)
+
                 moves = self.model(shit_tensor)
 
                 # convert back to numpy
@@ -141,17 +147,24 @@ class DQNAgent(object):
         batch = random.sample(self.replay_memory, BATCH_SIZE)
 
         current_states = np.array([transition[0] for transition in batch])
-        current_qs_list = self.model.predict(current_states)
+        current_states = numpy_state_batch_to_tensor_state_batch(current_states)
+        current_qs_list = self.model(current_states)
 
         new_current_states = np.array([transition[3] for transition in batch])
-        future_qs_list = self.target_model.predict(new_current_states)
+        new_current_states = numpy_state_batch_to_tensor_state_batch(new_current_states)
+        future_qs_list = self.target_model(new_current_states)
 
+        # list of numpy arrays, list of tensors
         inputs, expected_outputs = [], []
 
         for i, (current_state, action, reward, new_current_state, done) in enumerate(batch):
             if not done:
                 # this is where we get the shit from the target_model
-                max_future_q = np.max(future_qs_list[i])
+                # print(f"{future_qs_list[i]=}")
+                #print("AHHHHHHHHHHHHH")
+                # TODO: is the item a good idea?
+                max_future_q = torch.max(future_qs_list[i]).item()
+                # print(f"{max_future_q=}")
                 new_q = reward + DISCOUNT * max_future_q
             else:
                 new_q = reward
@@ -162,13 +175,16 @@ class DQNAgent(object):
             inputs.append(current_state)
             expected_outputs.append(current_qs)
 
-        inputs = np.array(inputs)
+        #print(f"{len(inputs)=} {inputs[0].Size()}")
+        inputs = numpy_state_batch_to_tensor_state_batch(inputs)
         # TODO: I don't think we care about BATCH SIZE, shuffle is taken care of already
-        expected_outputs = np.array(expected_outputs)
+        # print(expected_outputs)
+        expected_outputs = torch.stack(expected_outputs, dim=0)
         # self.model.fit(np.array(X), np.array(y), batch_size=BATCH_SIZE,
         #                shuffle=False, verbose=0, callbacks=[self.tensorboard]\
         #                if done else None)
         self.optimizer.zero_grad()
+        # print(f"{inputs.size()=}, {expected_outputs.size()=}")
 
         actual_outputs = self.model(inputs)
 
