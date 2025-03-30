@@ -33,6 +33,7 @@ def main():
     progress_list, wins_list, ep_rewards = [], [], []
     n_clicks = 0
 
+    # an episode is just a minesweeper game (from start to end/done)
     for episode in tqdm(range(1, params.episodes+1), unit='episode'):
         agent.tensorboard.step = episode
 

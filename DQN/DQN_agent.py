@@ -14,6 +14,9 @@ from my_tensorboard2 import *
 
 
 from torch.nn import Conv2d, ReLU, Flatten, Linear, Sequential
+import torch.nn as nn
+import torch.optim as optim
+
 def create_dqn(learn_rate, input_dims, n_actions, conv_units, dense_units):
     model = Sequential([
                 Conv2d(input_dims, conv_units, (3,3),  padding='same'),
@@ -70,6 +73,9 @@ class DQNAgent(object):
         self.model = create_dqn(
             self.learn_rate, self.env.state_im.shape, self.env.ntiles, conv_units, dense_units)
 
+        self.optimizer = optim.Adam(self.model.parameters(), lr=learn_rate, eps=1e-4)
+        self.criterion = nn.MSELoss()
+
         # target model - this is what we predict against every step
         self.target_model = create_dqn(
             self.learn_rate, self.env.state_im.shape, self.env.ntiles, conv_units, dense_units)
@@ -78,8 +84,8 @@ class DQNAgent(object):
         self.replay_memory = deque(maxlen=MEM_SIZE)
         self.target_update_counter = 0
 
-        self.tensorboard = ModifiedTensorBoard(
-            log_dir=f'logs\\{model_name}', profile_batch=0)
+        # self.tensorboard = ModifiedTensorBoard(
+        #     log_dir=f'logs\\{model_name}', profile_batch=0)
 
     def get_action(self, state):
         board = state.reshape(1, self.env.ntiles)
@@ -99,7 +105,7 @@ class DQNAgent(object):
     def update_replay_memory(self, transition):
         self.replay_memory.append(transition)
 
-    def train(self, done):
+    def train(self, done: bool):
         if len(self.replay_memory) < MEM_SIZE_MIN:
             return
 
@@ -111,10 +117,11 @@ class DQNAgent(object):
         new_current_states = np.array([transition[3] for transition in batch])
         future_qs_list = self.target_model.predict(new_current_states)
 
-        X,y = [], []
+        inputs, expected_outputs = [], []
 
         for i, (current_state, action, reward, new_current_state, done) in enumerate(batch):
             if not done:
+                # this is where we get the shit from the target_model
                 max_future_q = np.max(future_qs_list[i])
                 new_q = reward + DISCOUNT * max_future_q
             else:
@@ -123,12 +130,22 @@ class DQNAgent(object):
             current_qs = current_qs_list[i]
             current_qs[action] = new_q
 
-            X.append(current_state)
-            y.append(current_qs)
+            inputs.append(current_state)
+            expected_outputs.append(current_qs)
 
-        self.model.fit(np.array(X), np.array(y), batch_size=BATCH_SIZE,
-                       shuffle=False, verbose=0, callbacks=[self.tensorboard]\
-                       if done else None)
+        inputs = np.array(inputs)
+        # TODO: I don't think we care about BATCH SIZE, shuffle is taken care of already
+        expected_outputs = np.array(expected_outputs)
+        # self.model.fit(np.array(X), np.array(y), batch_size=BATCH_SIZE,
+        #                shuffle=False, verbose=0, callbacks=[self.tensorboard]\
+        #                if done else None)
+        self.optimizer.zero_grad()
+
+        actual_outputs = self.model(inputs)
+
+        loss = self.criterion(actual_outputs, expected_outputs)
+        loss.backward()
+        self.optimizer.step()
 
         # updating to determine if we want to update target_model yet
         if done:
