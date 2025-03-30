@@ -5,6 +5,7 @@ from torch.nn import Conv2d, ReLU, Flatten, Linear, Sequential
 
 def create_dqn(learn_rate, input_dims, n_actions, conv_units, dense_units):
     model = Sequential([
+        # provide the keyword argument input_shape (tuple of integers or None, does not include the sample axis
                 Conv2d(conv_units, (3,3), activation='relu', padding='same', input_shape=input_dims),
                 Conv2d(conv_units, (3,3), activation='relu', padding='same'),
                 Conv2d(conv_units, (3,3), activation='relu', padding='same'),

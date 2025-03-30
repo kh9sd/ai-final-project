@@ -1,6 +1,7 @@
 import os, sys
 
 ROOT = os.getcwd()
+print(ROOT)
 sys.path.insert(1, f'{os.path.dirname(ROOT)}')
 
 import warnings
@@ -13,29 +14,32 @@ from minesweeper_env import *
 #from DQN import *
 
 
-from torch.nn import Conv2d, ReLU, Flatten, Linear, Sequential
+from torch.nn import Conv2d, ReLU, Flatten, Linear, Sequential, LazyLinear
 import torch.nn as nn
 import torch.optim as optim
 
 def create_dqn(learn_rate, input_dims, n_actions, conv_units, dense_units):
-    model = Sequential([
-                Conv2d(input_dims, conv_units, (3,3),  padding='same'),
+    print(f"{input_dims=} {conv_units=}")
+    model = Sequential(
+                Conv2d(1, conv_units, kernel_size=3,  padding='same'),
                 ReLU(),
-                Conv2d(conv_units, conv_units, (3,3), padding='same'),
+                Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
                 ReLU(),
-                Conv2d(conv_units, conv_units, (3,3), padding='same'),
+                Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
                 ReLU(),
-                Conv2d(conv_units, conv_units, (3,3), padding='same'),
+                Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
                 ReLU(),
                 Flatten(),
-                Linear(dense_units, activation='relu'),
+                # TODO: def need to change this 1
+                LazyLinear(dense_units),
                 ReLU(),
-                Linear(dense_units, activation='relu'),
+                Linear(dense_units, dense_units),
                 ReLU(),
-                Linear(n_actions, activation='linear')])
+                Linear(dense_units, n_actions))
 
     # model.compile(optimizer=Adam(lr=learn_rate, epsilon=1e-4), loss='mse')
 
+    print(model)
     return model
 
 # Environment settings
@@ -79,7 +83,9 @@ class DQNAgent(object):
         # target model - this is what we predict against every step
         self.target_model = create_dqn(
             self.learn_rate, self.env.state_im.shape, self.env.ntiles, conv_units, dense_units)
-        self.target_model.set_weights(self.model.get_weights())
+    
+        #self.target_model.set_weights(self.model.get_weights())
+        self.target_model.load_state_dict(self.target_model.state_dict())
 
         self.replay_memory = deque(maxlen=MEM_SIZE)
         self.target_update_counter = 0
@@ -96,7 +102,8 @@ class DQNAgent(object):
         if rand < self.epsilon: # random move (explore)
             move = np.random.choice(unsolved)
         else:
-            moves = self.model.predict(np.reshape(state, (1, self.env.nrows, self.env.ncols, 1)))
+            #moves = self.model.predict(np.reshape(state, (1, self.env.nrows, self.env.ncols, 1)))
+            moves = self.model(np.reshape(state, (1, self.env.nrows, self.env.ncols, 1)))
             moves[board!=-0.125] = np.min(moves) # set already clicked tiles to min value
             move = np.argmax(moves)
 
