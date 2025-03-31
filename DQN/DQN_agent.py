@@ -26,12 +26,12 @@ def create_dqn(learn_rate, input_dims, n_actions, conv_units, dense_units):
     model = Sequential(
                 Conv2d(1, conv_units, kernel_size=3,  padding='same'),
                 ReLU(),
-                # Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
-                # ReLU(),
-                # Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
-                # ReLU(),
-                # Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
-                # ReLU(),
+                Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
+                ReLU(),
+                Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
+                ReLU(),
+                Conv2d(conv_units, conv_units, kernel_size=3, padding='same'),
+                ReLU(),
                 Flatten(),
                 # TODO: def need to change this 1
                 LazyLinear(dense_units),
