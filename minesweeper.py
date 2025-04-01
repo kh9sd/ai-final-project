@@ -11,6 +11,9 @@ import torch.nn.functional as F
 
 from torch.utils.tensorboard import SummaryWriter
 
+import numpy as np
+import tqdm
+
 MINESWEEPER_HEIGHT = 6
 MINESWEEPER_WIDTH = 5
 MINESWEEPER_N_MINES = 5
@@ -390,11 +393,13 @@ Core loop
 """
 
 TARGET_MODEL_UPDATE_RATE = 0.005
+AGG_STATS_EVERY = 100 # calculate stats every 100 games for tensorboard
+SAVE_MODEL_EVERY = 10_000 # save model and replay every 10,000 episodes
 
-writer = SummaryWriter()
+writer = SummaryWriter(comment="_minesweeper")
 
 if torch.cuda.is_available() or torch.backends.mps.is_available():
-    num_episodes = 600
+    num_episodes = 100000
 else:
     num_episodes = 50
 
@@ -412,8 +417,13 @@ def env_state_to_tensor_batch_state(state):
 
     return state
 
-for i_episode in range(num_episodes):
-    print(f"{i_episode=}")
+progress_list = []
+episode_rewards = []
+wins_list = []
+
+#for i_episode in range(num_episodes):
+for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
+    # print(f"{i_episode=}")
     # Initialize the environment and get its state
     state = env.reset()
     """
@@ -423,11 +433,16 @@ for i_episode in range(num_episodes):
     # print(f"{state=} {state.shape=}")
     state = env_state_to_tensor_batch_state(state) 
     
+    past_env_wins = env.n_wins
+    episode_reward = 0
+
     # count is an infinite generator
     for t in itertools.count():
         # print(f"{t=}")
         action = select_action(state)
         observation, reward, done = env.step(action.item())
+        episode_reward += reward
+
         reward = torch.tensor([reward], device=device)
 
         if done:
@@ -469,8 +484,24 @@ for i_episode in range(num_episodes):
         target_model.load_state_dict(target_net_state_dict)
 
         if done:
-            writer.add_scalar("Duration/train", t+1, i_episode)
             break
+    
+    # After a game, metrics
+    progress_list.append(env.n_progress) # n of non-guess moves
+    episode_rewards.append(episode_reward)
+    wins_list.append(env.n_wins - past_env_wins)
+    
+    if (i_episode % AGG_STATS_EVERY == 0):
+        median_progress = np.median(progress_list[-AGG_STATS_EVERY:])
+        win_rate = np.sum(wins_list[-AGG_STATS_EVERY:]) / AGG_STATS_EVERY
+        median_reward = np.median(episode_rewards[-AGG_STATS_EVERY:])
+
+        writer.add_scalar("Median progress/train", median_progress, i_episode)
+        writer.add_scalar("Win rate/train", win_rate, i_episode)
+        writer.add_scalar("Median reward/train", median_reward, i_episode)
+        writer.add_scalar("Epsilon", epsilon, i_episode)
+
+        print(f'Episode: {i_episode}, Median progress: {median_progress}, Median reward: {median_reward}, Win rate : {win_rate}')
 
 print('Complete')
 
