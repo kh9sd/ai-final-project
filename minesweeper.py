@@ -139,6 +139,7 @@ def NHWC_to_NHWC(tensor):
 
 # Returns tensor of size =torch.Size([1, 1])
 def select_action(state):
+    # print(f"{state.size()=}")
     assert(state.size() == (1, 1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
     # print(f"{state=}")
 
@@ -399,6 +400,18 @@ else:
 
 print(f"Starting, {num_episodes=}")
 
+def env_state_to_tensor_batch_state(state):
+    assert(state.shape == (MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH, 1))
+
+    state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    assert(state.size() == (1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH, 1))
+
+    state = NHWC_to_NHWC(state)
+    # TODO: look at values, verify
+    assert(state.size() == (1, 1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
+
+    return state
+
 for i_episode in range(num_episodes):
     print(f"{i_episode=}")
     # Initialize the environment and get its state
@@ -408,17 +421,11 @@ for i_episode in range(num_episodes):
     # state=array([0.01756821, 0.03350502, 0.02066539, 0.04153426], dtype=float32)
     """
     # print(f"{state=} {state.shape=}")
-    assert(state.shape == (MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH, 1))
-
-    state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-    assert(state.size() == (1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH, 1))
-
-    state = NHWC_to_NHWC(state)
-    # TODO: look at values, verify
-    assert(state.size() == (1, 1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
+    state = env_state_to_tensor_batch_state(state) 
     
     # count is an infinite generator
     for t in itertools.count():
+        # print(f"{t=}")
         action = select_action(state)
         observation, reward, done = env.step(action.item())
         reward = torch.tensor([reward], device=device)
@@ -426,7 +433,7 @@ for i_episode in range(num_episodes):
         if done:
             next_state = None
         else:
-            next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+            next_state = env_state_to_tensor_batch_state(observation)
         """
         # state.size()=torch.Size([1, 4]) 
         # action.size()=torch.Size([1, 1]) 
