@@ -21,7 +21,7 @@ import torch.optim as optim
 
 torch.set_default_device('cuda')
 
-def create_dqn(learn_rate, input_dims, n_actions, conv_units, dense_units):
+def create_dqn(input_dims, n_actions, conv_units, dense_units):
     print(f"{input_dims=} {conv_units=}")
     model = Sequential(
                 Conv2d(1, conv_units, kernel_size=3,  padding='same'),
@@ -51,6 +51,7 @@ MEM_SIZE_MIN = 1_000 # min number of moves in replay buffer
 
 # Learning settings
 BATCH_SIZE = 64
+# TODO: not convinced learn rate changes
 learn_rate = 0.01
 LEARN_DECAY = 0.99975
 LEARN_MIN = 0.001
@@ -89,14 +90,14 @@ class DQNAgent(object):
         self.learn_rate = learn_rate
         self.epsilon = epsilon
         self.model = create_dqn(
-            self.learn_rate, self.env.state_im.shape, self.env.ntiles, conv_units, dense_units)
+            self.env.state_im.shape, self.env.ntiles, conv_units, dense_units)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=learn_rate, eps=1e-4)
         self.criterion = nn.MSELoss()
 
         # target model - this is what we predict against every step
         self.target_model = create_dqn(
-            self.learn_rate, self.env.state_im.shape, self.env.ntiles, conv_units, dense_units)
+            self.env.state_im.shape, self.env.ntiles, conv_units, dense_units)
     
         #self.target_model.set_weights(self.model.get_weights())
         self.target_model.load_state_dict(self.model.state_dict())
@@ -113,13 +114,16 @@ class DQNAgent(object):
 
         with torch.no_grad(): 
             board = state.reshape(1, self.env.ntiles)
+            # TODO: verify this works
             unsolved = [i for i, x in enumerate(board[0]) if x==-0.125]
 
             rand = np.random.random() # random value b/w 0 & 1
 
+            # TODO: print epsilon
             if rand < self.epsilon: # random move (explore)
                 move = np.random.choice(unsolved)
             else:
+                # TODO: https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
                 #moves = self.model.predict(np.reshape(state, (1, self.env.nrows, self.env.ncols, 1)))
                 # pytorch expects of 
                 reshaped_state = np.reshape(state, (1, self.env.nrows, self.env.ncols, 1))
@@ -139,13 +143,17 @@ class DQNAgent(object):
         self.replay_memory.append(transition)
 
     def train(self, done: bool):
-        self.model.train() 
+        self.model.eval() 
 
         if len(self.replay_memory) < MEM_SIZE_MIN:
             return
 
         batch = random.sample(self.replay_memory, BATCH_SIZE)
 
+        # TODO: print out data type of transition
+        # might just be s,a,s',r?
+        # nope, s,a,r,s',done
+        # TODO: eval?
         current_states = np.array([transition[0] for transition in batch])
         current_states = numpy_state_batch_to_tensor_state_batch(current_states)
         current_qs_list = self.model(current_states)
@@ -161,7 +169,6 @@ class DQNAgent(object):
             if not done:
                 # this is where we get the shit from the target_model
                 # print(f"{future_qs_list[i]=}")
-                #print("AHHHHHHHHHHHHH")
                 # TODO: is the item a good idea?
                 max_future_q = torch.max(future_qs_list[i]).item()
                 # print(f"{max_future_q=}")
@@ -170,11 +177,13 @@ class DQNAgent(object):
                 new_q = reward
 
             current_qs = current_qs_list[i]
+            # todo: are we not supposed to add the shit?
             current_qs[action] = new_q
 
             inputs.append(current_state)
             expected_outputs.append(current_qs)
 
+        self.model.train() 
         #print(f"{len(inputs)=} {inputs[0].Size()}")
         inputs = numpy_state_batch_to_tensor_state_batch(inputs)
         # TODO: I don't think we care about BATCH SIZE, shuffle is taken care of already
@@ -207,5 +216,7 @@ class DQNAgent(object):
         # decay epsilon
         self.epsilon = max(EPSILON_MIN, self.epsilon*EPSILON_DECAY)
 
+# TODO: try debugging with 5 x 5 grid?
+# TODO: just try it again?
 if __name__ == "__main__":
     DQNAgent(MinesweeperEnv(9,9,10))
