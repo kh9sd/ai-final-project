@@ -54,3 +54,39 @@ class DQN(nn.Module):
         x = F.relu(self.layer1(x))
         x = F.relu(self.layer2(x))
         return self.layer3(x)
+
+n_actions = env.action_space.n
+# reset returns state, info tuple
+n_observations = len(env.reset()[0])
+print(f"{n_actions=} {n_observations=}")
+
+policy_model = DQN(n_observations=n_observations, n_actions=n_actions).to(device)
+target_model = DQN(n_observations=n_observations, n_actions=n_actions).to(device)
+target_model.load_state_dict(policy_model.state_dict())
+
+LEARNING_RATE = 1e-4
+# NOTE: own Adam, not AdamW
+optimizer = optim.Adam(policy_model.parameters(), lr=LEARNING_RATE, amsgrad=True)
+
+
+"""
+Epsilon/ getting action
+"""
+epsilon = 0.95
+EPSILON_DECAY = 0.99975
+EPSILON_MIN = 0.01
+
+#steps_done = 0
+
+def select_action(state):
+    # NOTE: own epsilon decay
+
+    # TODO: avoid dupe epsilon decay
+    if random.random() < epsilon:
+        epsilon = max(EPSILON_MIN, epsilon*EPSILON_DECAY)
+        return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
+    else:
+        epsilon = max(EPSILON_MIN, epsilon*EPSILON_DECAY)
+        # IDK wtf this is, TODO
+        shit = policy_model(state).max(1).indices.view(1,1)
+        return shit
