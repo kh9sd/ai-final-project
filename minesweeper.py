@@ -1,5 +1,4 @@
-import gymnasium as gym
-
+from minesweeper_env import MinesweeperEnv
 import random
 
 from collections import namedtuple, deque
@@ -12,7 +11,11 @@ import torch.nn.functional as F
 
 from torch.utils.tensorboard import SummaryWriter
 
-env = gym.make("CartPole-v1")
+MINESWEEPER_HEIGHT = 6
+MINESWEEPER_WIDTH = 5
+MINESWEEPER_N_MINES = 5
+
+env = MinesweeperEnv(width=MINESWEEPER_WIDTH, height=MINESWEEPER_HEIGHT, n_mines=MINESWEEPER_N_MINES)
 
 device = torch.device(
     "cuda" if torch.cuda.is_available() else
@@ -38,29 +41,44 @@ class ReplayMemory(object):
     def __len__(self):
         return len(self.memory)
 
+
+CONV_FEATURES = 512
+LINEAR_FEATURES = 512
+
 # Our goal is to make a NN that will
 # state -> (Q(s,a_1), ..., Q(s,a_n))
 class DQN(nn.Module):
-    def __init__(self, n_observations, n_actions):
+    def __init__(self, n_actions):
         super(DQN, self).__init__()
-        self.layer1 = nn.Linear(n_observations, 128)
-        self.layer2 = nn.Linear(128, 128)
-        self.layer3 = nn.Linear(128, n_actions)
+        self.layers = nn.Sequential(
+                # 1 channel input
+                nn.Conv2d(1, CONV_FEATURES, kernel_size=3,  padding='same'),
+                nn.ReLU(),
+                nn.Conv2d(CONV_FEATURES, CONV_FEATURES, kernel_size=3, padding='same'),
+                nn.ReLU(),
+                nn.Conv2d(CONV_FEATURES, CONV_FEATURES, kernel_size=3, padding='same'),
+                nn.ReLU(),
+                nn.Conv2d(CONV_FEATURES, CONV_FEATURES, kernel_size=3, padding='same'),
+                nn.ReLU(),
+                nn.Flatten(),
+                nn.LazyLinear(LINEAR_FEATURES),
+                nn.ReLU(),
+                nn.Linear(LINEAR_FEATURES, LINEAR_FEATURES),
+                nn.ReLU(),
+                nn.Linear(LINEAR_FEATURES, n_actions))
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
-        x = F.relu(self.layer1(x))
-        x = F.relu(self.layer2(x))
-        return self.layer3(x)
+        return self.layers(x)
 
-n_actions = env.action_space.n
+n_actions = env.ntiles
 # reset returns state, info tuple
-n_observations = len(env.reset()[0])
-print(f"{n_actions=} {n_observations=}")
+#n_observations = len(env.reset()[0])
+print(f"{n_actions=}")
 
-policy_model = DQN(n_observations=n_observations, n_actions=n_actions).to(device)
-target_model = DQN(n_observations=n_observations, n_actions=n_actions).to(device)
+policy_model = DQN(n_actions=n_actions).to(device)
+target_model = DQN(n_actions=n_actions).to(device)
 target_model.load_state_dict(policy_model.state_dict())
 
 LEARNING_RATE = 1e-4
@@ -77,21 +95,35 @@ EPSILON_MIN = 0.01
 
 #steps_done = 0
 
+# Returns tensor of size =torch.Size([1, 1])
 def select_action(state):
+    assert(state.size() == (1,MINESWEEPER_WIDTH, MINESWEEPER_HEIGHT, 1))
+    print(f"{state=}")
+
     # NOTE: own epsilon decay
     global epsilon
+    epsilon = max(EPSILON_MIN, epsilon*EPSILON_DECAY)
 
-    # TODO: avoid dupe epsilon decay
+    flattened_board = state.reshape(1, env.ntiles)
+    print(f"{flattened_board=}")
+
     if random.random() < epsilon:
-        epsilon = max(EPSILON_MIN, epsilon*EPSILON_DECAY)
-        return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
+        # actions indices, filter out already solved tiles
+        # TODO: make this not strict equality? floats?
+        unsolved_action_indices = [i for i, x in enumerate(flattened_board[0]) if x==-0.125]
+        # print(f"{unsolved_action_indices=}")
+
+        return torch.tensor([[random.choice(unsolved_action_indices)]], device=device, dtype=torch.long)
     else:
-        epsilon = max(EPSILON_MIN, epsilon*EPSILON_DECAY)
         """
         # ex: tensor([[0.1983, 0.1383]])
         """
-        shit = policy_model(state)
+        moves = policy_model(state)
         #print(f"policy_model(state) {shit=}")
+
+        # moves[board!=-0.125] = np.min(moves) # set already clicked tiles to min value
+        # TODO: this shit, wtf? strict equality
+        moves[flattened_board!=-0.125] = torch.min(moves).values().item()
         
         """
         # ex: torch.return_types.max(
@@ -100,7 +132,7 @@ def select_action(state):
         # indices are good enough for argmax
         """
         # TLDR: this is our argmax
-        shit = shit.max(1)
+        shit = moves.max(1)
         #print(f"max(1) {shit=}")
 
         """
@@ -315,7 +347,7 @@ print(f"Starting, {num_episodes=}")
 for i_episode in range(num_episodes):
     print(f"{i_episode=}")
     # Initialize the environment and get its state
-    state, info = env.reset()
+    state = env.reset()
     """
     # state is np array,
     # state=array([0.01756821, 0.03350502, 0.02066539, 0.04153426], dtype=float32)

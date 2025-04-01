@@ -78,6 +78,7 @@ EPSILON_MIN = 0.01
 #steps_done = 0
 
 def select_action(state):
+    # Returns tensor of size =torch.Size([1, 1])
     # NOTE: own epsilon decay
     global epsilon
 
@@ -327,6 +328,7 @@ for i_episode in range(num_episodes):
     # count is an infinite generator
     for t in itertools.count():
         action = select_action(state)
+        # print(f"{action.size()=}")
         observation, reward, terminated, truncated, _ = env.step(action.item())
         reward = torch.tensor([reward], device=device)
         done = terminated or truncated
