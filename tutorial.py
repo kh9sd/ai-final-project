@@ -221,7 +221,6 @@ def optimize_model():
     [ 2.8522e-01],
     [ 2.8025e-01]]
     """
-    # TODO: how does the gather work here, what does it do?
 
     """
     wtf is gather?: 
@@ -280,7 +279,7 @@ def optimize_model():
     #       {action_batch.size()=} \
     #       {state_action_values=}")
 
-    # Compute V(s_{t+1}) for all next states.
+    # Compute max_{a'}(Q(s',a'))) for all next states
     # Expected values of actions for non_final_next_states are computed based
     # on the "older" target_net; selecting their best reward with max(1).values
     # This is merged based on the mask, such that we'll have either the expected
