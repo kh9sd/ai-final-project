@@ -256,7 +256,6 @@ def optimize_model():
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
 
-    # TODO: what is the size of these tensors?
     criterion = nn.SmoothL1Loss()
     """
     unsqueeze:
@@ -310,9 +309,10 @@ for i_episode in range(num_episodes):
     print(f"{i_episode=}")
     # Initialize the environment and get its state
     state, info = env.reset()
-    # TODO: what is type from env? numpy?
+    # state is np array,
+    # state=array([0.01756821, 0.03350502, 0.02066539, 0.04153426], dtype=float32)
+    #print(f"{state=}")
 
-    # TODO: wtf is this shit? unsqueeze?
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     
     # count is an infinite generator
@@ -326,7 +326,17 @@ for i_episode in range(num_episodes):
             next_state = None
         else:
             next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
-        # TODO: types and sizes of s,a,s',r
+        # state.size()=torch.Size([1, 4]) 
+        # action.size()=torch.Size([1, 1]) 
+        # next_state.size()=torch.Size([1, 4]) 
+        # reward.size()=torch.Size([1])
+        # print(f"{state.size()=} {action.size()=} {next_state.size()=} {reward.size()=}")
+
+        # state=tensor([[-0.0262, -0.4380,  0.1120,  0.7674]], device='cuda:0') 
+        # action=tensor([[0]], device='cuda:0') 
+        # next_state=tensor([[-0.0349, -0.6345,  0.1274,  1.0932]], device='cuda:0') 
+        # reward=tensor([1.], device='cuda:0')
+        print(f"{state=} {action=} {next_state=} {reward=}")
 
         # Store the transition in memory
         memory.push(Transition(state, action, next_state, reward))
