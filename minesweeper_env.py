@@ -177,6 +177,8 @@ class MinesweeperEnv(object):
         self.board = self.get_board()
         self.state, self.state_im = self.init_state()
 
+        return self.state_im
+
     def step(self, action_index):
         done = False
         coords = self.state[action_index]['coord']
