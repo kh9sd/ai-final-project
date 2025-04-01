@@ -45,23 +45,50 @@ class ReplayMemory(object):
 CONV_FEATURES = 512
 LINEAR_FEATURES = 512
 
+class ConvRELu(nn.Module):
+    def __init__(self, n_inputs):
+        super(ConvRELu, self).__init__()
+        self.layers = nn.Sequential(
+                nn.Conv2d(n_inputs, CONV_FEATURES, kernel_size=3,  padding='same'),
+                nn.ReLU(),
+        )
+    
+    def forward(self, x):
+        return self.layers(x)
+
+
+class LazyConvRELu(nn.Module):
+    def __init__(self):
+        super(LazyConvRELu, self).__init__()
+        self.layers = nn.Sequential(
+                nn.LazyConv2d(CONV_FEATURES, kernel_size=3, padding='same'),
+                nn.ReLU(),
+        )
+    
+    def forward(self, x):
+        return self.layers(x)
+
 # Our goal is to make a NN that will
 # state -> (Q(s,a_1), ..., Q(s,a_n))
 class DQN(nn.Module):
     def __init__(self, n_actions):
         super(DQN, self).__init__()
-        self.layers = nn.Sequential(
-                # 1 channel input
-                nn.Conv2d(1, CONV_FEATURES, kernel_size=3,  padding='same'),
-                nn.ReLU(),
-                nn.Conv2d(CONV_FEATURES, CONV_FEATURES, kernel_size=3, padding='same'),
-                nn.ReLU(),
-                nn.Conv2d(CONV_FEATURES, CONV_FEATURES, kernel_size=3, padding='same'),
-                nn.ReLU(),
-                nn.Conv2d(CONV_FEATURES, CONV_FEATURES, kernel_size=3, padding='same'),
-                nn.ReLU(),
-                nn.Flatten(),
-                nn.LazyLinear(LINEAR_FEATURES),
+
+        self.first_conv_layer = ConvRELu(1)
+        
+        self.second_conv_layer = ConvRELu(512)
+        self.third_conv_layer = ConvRELu(512)
+        self.fourth_conv_layer = ConvRELu(512)
+        # self.second_conv_layer = LazyConvRELu()
+        # self.third_conv_layer = LazyConvRELu()
+        # self.fourth_conv_layer = LazyConvRELu()
+
+        self.flatten = nn.Flatten()
+
+        self.first_linear = nn.Linear(512 * env.ntiles, LINEAR_FEATURES)
+        #self.first_linear = nn.LazyLinear(LINEAR_FEATURES)
+
+        self.remaining_layers = nn.Sequential(
                 nn.ReLU(),
                 nn.Linear(LINEAR_FEATURES, LINEAR_FEATURES),
                 nn.ReLU(),
@@ -70,7 +97,19 @@ class DQN(nn.Module):
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
-        return self.layers(x)
+        after_first = self.first_conv_layer(x)
+        after_second = self.second_conv_layer(after_first)
+        after_third = self.third_conv_layer(after_second)
+        after_fourth = self.fourth_conv_layer(after_third)
+
+        #print(f"{after_first.size()=} \n{after_second.size()=} \n{after_third.size()=} \n{after_fourth.size()=}")
+
+        flattened = self.flatten(after_fourth)
+        #print(f"{flattened.size()=}")
+
+        after_first_linear = self.first_linear(flattened)
+
+        return self.remaining_layers(after_first_linear)
 
 n_actions = env.ntiles
 # reset returns state, info tuple
@@ -110,6 +149,7 @@ def select_action(state):
     flattened_board = state.reshape(1, env.ntiles)
     # print(f"{flattened_board=}")
 
+    #if 1 < epsilon:
     if random.random() < epsilon:
         # actions indices, filter out already solved tiles
         # TODO: make this not strict equality? floats?
@@ -380,11 +420,10 @@ for i_episode in range(num_episodes):
     # count is an infinite generator
     for t in itertools.count():
         action = select_action(state)
-        observation, reward, terminated, truncated, _ = env.step(action.item())
+        observation, reward, done = env.step(action.item())
         reward = torch.tensor([reward], device=device)
-        done = terminated or truncated
 
-        if terminated:
+        if done:
             next_state = None
         else:
             next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
