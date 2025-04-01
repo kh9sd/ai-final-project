@@ -41,6 +41,8 @@ class ReplayMemory(object):
     def __len__(self):
         return len(self.memory)
 
+# Our goal is to make a NN that will
+# state -> (Q(s,a_1), ..., Q(s,a_n))
 class DQN(nn.Module):
     def __init__(self, n_observations, n_actions):
         super(DQN, self).__init__()
@@ -88,20 +90,30 @@ def select_action(state):
         return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
     else:
         epsilon = max(EPSILON_MIN, epsilon*EPSILON_DECAY)
+        """
         # ex: tensor([[0.1983, 0.1383]])
+        """
         shit = policy_model(state)
         #print(f"policy_model(state) {shit=}")
         
+        """
         # ex: torch.return_types.max(
         # values=tensor([0.1983], device='cuda:0', grad_fn=<MaxBackward0>),
         # indices=tensor([0], device='cuda:0'))
         # indices are good enough for argmax
+        """
+        # TLDR: this is our argmax
         shit = shit.max(1)
         #print(f"max(1) {shit=}")
 
+        """
         # view dimensions are (1,1)
+        """
         shit = shit.indices.view(1,1)
+        
+        """
         # ex: tensor([[0]])
+        """
         #print(f"After it all: {shit=}")
         return shit
 
@@ -181,6 +193,36 @@ def optimize_model():
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
+    
+    policy_on_state_batch = policy_model(state_batch)
+    """
+    # note: n_actions=np.int64(2) n_observations=4
+
+    # state_batch.size()=torch.Size([128, 4]) 
+    # policy_on_state_batch.size()=torch.Size([128, 2]) 
+
+    # action_batch.size()=torch.Size([128, 1])    
+    This one is like
+    [1],
+    [1],
+    [1],
+    [1],
+    [0],
+    [0],
+
+    # state_action_values.size()=torch.Size([128, 1])
+    This one is like
+    [-3.4153e-03],
+    [ 2.3756e-01],
+    [ 2.4197e-01],
+    [-2.7275e-02],
+    [ 2.3714e-01],
+    [ 3.0386e-04],
+    [ 2.8522e-01],
+    [ 2.8025e-01]]
+    """
+    # TODO: how does the gather work here, what does it do?
+
     """
     wtf is gather?: 
 
@@ -217,35 +259,20 @@ def optimize_model():
         q_vals.append(qv[ac])
     q_vals = torch.cat(q_vals, dim=0)
     """
-    
-    policy_on_state_batch = policy_model(state_batch)
+    # print(f"{policy_on_state_batch=}, \n {action_batch=}")
+
+    # these are the Q(s,a) values
     """
-    # note: n_actions=np.int64(2) n_observations=4
+    Basically, what is happening is that the model spits out
+    [Q(s,a_1),
+     Q(s,a_2),
+     Q(s,a_3),
+     ...
+     Q(s,a_n)]
+    in policy_on_state_batch.
 
-    # state_batch.size()=torch.Size([128, 4]) 
-    # policy_on_state_batch.size()=torch.Size([128, 2]) 
-
-    # action_batch.size()=torch.Size([128, 1])    
-    This one is like
-    [1],
-    [1],
-    [1],
-    [1],
-    [0],
-    [0],
-
-    # state_action_values.size()=torch.Size([128, 1])
-    This one is like
-    [-3.4153e-03],
-    [ 2.3756e-01],
-    [ 2.4197e-01],
-    [-2.7275e-02],
-    [ 2.3714e-01],
-    [ 3.0386e-04],
-    [ 2.8522e-01],
-    [ 2.8025e-01]]
+    The actual action would've been an index into that tensor, 0 through n-1
     """
-
     state_action_values = policy_on_state_batch.gather(1, action_batch)
 
     # print(f"{state_batch.size()=} \
@@ -262,6 +289,7 @@ def optimize_model():
     with torch.no_grad():
         next_state_values[non_final_mask] = target_model(non_final_next_states).max(1).values
     # Compute the expected Q values
+    # this is just the (r + gamma max_{a'}(Q(s',a'))) term!
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
 
