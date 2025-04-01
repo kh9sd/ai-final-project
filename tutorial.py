@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+import tqdm
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -303,6 +304,8 @@ Core loop
 """
 
 TARGET_MODEL_UPDATE_RATE = 0.005
+AGG_STATS_EVERY = 100 # calculate stats every 100 games for tensorboard
+SAVE_MODEL_EVERY = 10_000 # save model and replay every 10,000 episodes
 
 writer = SummaryWriter()
 
@@ -313,8 +316,8 @@ else:
 
 print(f"Starting, {num_episodes=}")
 
-for i_episode in range(num_episodes):
-    print(f"{i_episode=}")
+for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
+    # print(f"{i_episode=}")
     # Initialize the environment and get its state
     state, info = env.reset()
     """
@@ -372,8 +375,12 @@ for i_episode in range(num_episodes):
         target_model.load_state_dict(target_net_state_dict)
 
         if done:
-            writer.add_scalar("Duration/train", t+1, i_episode)
             break
+
+    writer.add_scalar("Duration/train", t+1, i_episode)
+    if (i_episode % AGG_STATS_EVERY == 0):
+            # update tensorboard here as well
+            print(f'Episode: {i_episode},  Duration: {t+1}')
 
 print('Complete')
 
