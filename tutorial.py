@@ -158,16 +158,21 @@ def optimize_model():
     # (a final state would've been the one after which simulation ended)
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
                                           batch.next_state)), device=device, dtype=torch.bool)
+    """
     # non_final_mask is a Tensor of Bool, size is Size([128])
+    """                                        
     # print(f"{non_final_mask=}, {non_final_mask.size()}")
 
     non_final_next_states = torch.cat([s for s in batch.next_state
                                                 if s is not None])
+
+    """
     # non_final_next_states is a tensor of states, filtered out None next states
     # ex:
     #  [ 5.8431e-02, -3.6820e-02, -6.3966e-02, -9.0537e-02],
     #  [ 2.7936e-02, -3.8984e-02, -5.0224e-03, -4.2624e-02],
     #  [-1.4962e-01, -4.4439e-01,  1.9825e-01,  8.9324e-01]], device='cuda:0'), torch.Size([124, 4])
+    """
     # print(f"{non_final_next_states=}, {non_final_next_states.size()}")
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
@@ -177,7 +182,7 @@ def optimize_model():
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
     """
-    TODO: wtf is gather?: 
+    wtf is gather?: 
 
     multi-index selection method
 
@@ -214,27 +219,23 @@ def optimize_model():
     """
     
     policy_on_state_batch = policy_model(state_batch)
+    """
     # note: n_actions=np.int64(2) n_observations=4
 
     # state_batch.size()=torch.Size([128, 4]) 
     # policy_on_state_batch.size()=torch.Size([128, 2]) 
 
     # action_batch.size()=torch.Size([128, 1])    
-    """
     This one is like
-
     [1],
     [1],
     [1],
     [1],
     [0],
     [0],
-    """
 
     # state_action_values.size()=torch.Size([128, 1])
-    """
     This one is like
-
     [-3.4153e-03],
     [ 2.3756e-01],
     [ 2.4197e-01],
@@ -285,8 +286,10 @@ def optimize_model():
     size is [4,1]
     """
     # print(f"{state_action_values.size()=} {expected_state_action_values.size()=}")
+    """
     # state_action_values.size()=torch.Size([128, 1])
     # expected_state_action_values.size()=torch.Size([128])
+    """
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
     # Optimize the model
@@ -317,8 +320,10 @@ for i_episode in range(num_episodes):
     print(f"{i_episode=}")
     # Initialize the environment and get its state
     state, info = env.reset()
+    """
     # state is np array,
     # state=array([0.01756821, 0.03350502, 0.02066539, 0.04153426], dtype=float32)
+    """
     #print(f"{state=}")
 
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
@@ -334,16 +339,20 @@ for i_episode in range(num_episodes):
             next_state = None
         else:
             next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+        """
         # state.size()=torch.Size([1, 4]) 
         # action.size()=torch.Size([1, 1]) 
         # next_state.size()=torch.Size([1, 4]) 
         # reward.size()=torch.Size([1])
+        """
         # print(f"{state.size()=} {action.size()=} {next_state.size()=} {reward.size()=}")
 
+        """
         # state=tensor([[-0.0262, -0.4380,  0.1120,  0.7674]], device='cuda:0') 
         # action=tensor([[0]], device='cuda:0') 
         # next_state=tensor([[-0.0349, -0.6345,  0.1274,  1.0932]], device='cuda:0') 
         # reward=tensor([1.], device='cuda:0')
+        """
         # print(f"{state=} {action=} {next_state=} {reward=}")
 
         # Store the transition in memory
