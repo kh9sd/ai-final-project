@@ -258,7 +258,28 @@ def optimize_model():
 
     # TODO: what is the size of these tensors?
     criterion = nn.SmoothL1Loss()
-    # TODO: unsqueeze?
+    """
+    unsqueeze:
+
+    adds dim of size 1 at specified pos
+
+    >>> x = torch.tensor([1, 2, 3, 4])
+    size is [4]
+
+    >>> torch.unsqueeze(x, 0)
+    tensor([[ 1,  2,  3,  4]])
+    size is [1,4]
+
+    >>> torch.unsqueeze(x, 1)
+    tensor([[ 1],
+            [ 2],
+            [ 3],
+            [ 4]])
+    size is [4,1]
+    """
+    # print(f"{state_action_values.size()=} {expected_state_action_values.size()=}")
+    # state_action_values.size()=torch.Size([128, 1])
+    # expected_state_action_values.size()=torch.Size([128])
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
     # Optimize the model
