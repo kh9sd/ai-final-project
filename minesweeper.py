@@ -18,6 +18,8 @@ MINESWEEPER_HEIGHT = 6
 MINESWEEPER_WIDTH = 5
 MINESWEEPER_N_MINES = 5
 
+import pickle
+
 env = MinesweeperEnv(width=MINESWEEPER_WIDTH, height=MINESWEEPER_HEIGHT, n_mines=MINESWEEPER_N_MINES)
 
 device = torch.device(
@@ -397,6 +399,10 @@ AGG_STATS_EVERY = 100 # calculate stats every 100 games for tensorboard
 SAVE_MODEL_EVERY = 10_000 # save model and replay every 10,000 episodes
 
 writer = SummaryWriter(comment="_minesweeper")
+log_dir_rel_path = writer.log_dir
+
+TRAINING_NAME = log_dir_rel_path.split("\\")[1]
+print(f"{TRAINING_NAME=}")
 
 if torch.cuda.is_available() or torch.backends.mps.is_available():
     num_episodes = 100000
@@ -502,6 +508,12 @@ for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
         writer.add_scalar("Epsilon", epsilon, i_episode)
 
         print(f'Episode: {i_episode}, Median progress: {median_progress}, Median reward: {median_reward}, Win rate : {win_rate}')
+    
+    if (i_episode % SAVE_MODEL_EVERY == 0):
+        with open(f'replay/{TRAINING_NAME}_{i_episode}.pkl', 'wb') as output:
+            pickle.dump(memory, output)
+
+        torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}_{i_episode}.h5')
 
 print('Complete')
 
