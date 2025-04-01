@@ -95,17 +95,20 @@ EPSILON_MIN = 0.01
 
 #steps_done = 0
 
+def NHWC_to_NHWC(tensor):
+    return tensor.permute(0, 3, 1, 2) # from NHWC to NCHW
+
 # Returns tensor of size =torch.Size([1, 1])
 def select_action(state):
-    assert(state.size() == (1,MINESWEEPER_WIDTH, MINESWEEPER_HEIGHT, 1))
-    print(f"{state=}")
+    assert(state.size() == (1, 1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
+    # print(f"{state=}")
 
     # NOTE: own epsilon decay
     global epsilon
     epsilon = max(EPSILON_MIN, epsilon*EPSILON_DECAY)
 
     flattened_board = state.reshape(1, env.ntiles)
-    print(f"{flattened_board=}")
+    # print(f"{flattened_board=}")
 
     if random.random() < epsilon:
         # actions indices, filter out already solved tiles
@@ -119,11 +122,21 @@ def select_action(state):
         # ex: tensor([[0.1983, 0.1383]])
         """
         moves = policy_model(state)
-        #print(f"policy_model(state) {shit=}")
+        assert(moves.size() == (1, n_actions))
+        # print(f"policy_model(state) {moves=}")
 
         # moves[board!=-0.125] = np.min(moves) # set already clicked tiles to min value
+
+        # The basic idea is to set the Q-value already picked actions to the very minimum
+        # NOTE: changed to be even below minimum
         # TODO: this shit, wtf? strict equality
-        moves[flattened_board!=-0.125] = torch.min(moves).values().item()
+        shit_mask = flattened_board!=-0.125
+        # print(f"{shit_mask=}")
+
+        # print(f"{torch.min(moves)=}")
+        moves[shit_mask] = torch.min(moves).item() - 1
+
+        # print(f"{moves=}")
         
         """
         # ex: torch.return_types.max(
@@ -144,6 +157,8 @@ def select_action(state):
         # ex: tensor([[0]])
         """
         #print(f"After it all: {shit=}")
+
+        assert(shit.size() == (1,1))
         return shit
 
 
@@ -352,9 +367,15 @@ for i_episode in range(num_episodes):
     # state is np array,
     # state=array([0.01756821, 0.03350502, 0.02066539, 0.04153426], dtype=float32)
     """
-    #print(f"{state=}")
+    # print(f"{state=} {state.shape=}")
+    assert(state.shape == (MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH, 1))
 
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    assert(state.size() == (1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH, 1))
+
+    state = NHWC_to_NHWC(state)
+    # TODO: look at values, verify
+    assert(state.size() == (1, 1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
     
     # count is an infinite generator
     for t in itertools.count():
