@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 
 import math
 import random
@@ -7,7 +7,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from collections import namedtuple, deque
-from itertools import count
+import itertools
 
 import torch
 import torch.nn as nn
@@ -80,6 +80,7 @@ EPSILON_MIN = 0.01
 
 def select_action(state):
     # NOTE: own epsilon decay
+    global epsilon
 
     # TODO: avoid dupe epsilon decay
     if random.random() < epsilon:
@@ -181,3 +182,71 @@ def optimize_model():
     # basically, dont make the gradient too big
     torch.nn.utils.clip_grad_value_(policy_model.parameters(), 100)
     optimizer.step()
+
+
+
+
+"""
+Core loop
+"""
+
+TARGET_MODEL_UPDATE_RATE = 0.005
+
+if torch.cuda.is_available() or torch.backends.mps.is_available():
+    num_episodes = 600
+else:
+    num_episodes = 50
+
+print(f"Starting, {num_episodes=}")
+
+for i_episode in range(num_episodes):
+    print(f"{i_episode=}")
+    # Initialize the environment and get its state
+    state, info = env.reset()
+    # TODO: what is type from env? numpy?
+
+    # TODO: wtf is this shit? unsqueeze?
+    state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    
+    # count is an infinite generator
+    for t in itertools.count():
+        action = select_action(state)
+        observation, reward, terminated, truncated, _ = env.step(action.item())
+        reward = torch.tensor([reward], device=device)
+        done = terminated or truncated
+
+        if terminated:
+            next_state = None
+        else:
+            next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+        # TODO: types and sizes of s,a,s',r
+
+        # Store the transition in memory
+        memory.push(Transition(state, action, next_state, reward))
+
+        # Move to the next state
+        state = next_state
+
+        # Perform one step of the optimization (on the policy network)
+        optimize_model()
+
+        # This is the target updating
+        # Soft update of the target network's weights
+        # θ′ ← τ θ + (1 −τ )θ′
+        target_net_state_dict = target_model.state_dict()
+        policy_net_state_dict = policy_model.state_dict()
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = policy_net_state_dict[key]*TARGET_MODEL_UPDATE_RATE + target_net_state_dict[key]*(1-TARGET_MODEL_UPDATE_RATE)
+        target_model.load_state_dict(target_net_state_dict)
+
+        if done:
+            episode_durations.append(t + 1)
+            plot_durations()
+            break
+
+print('Complete')
+
+torch.save(policy_model.state_dict(), 'tutorial_model.h5')
+plot_durations(show_result=True)
+# plt.ioff()
+plt.show()
