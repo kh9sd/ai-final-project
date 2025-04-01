@@ -88,8 +88,21 @@ def select_action(state):
         return torch.tensor([[env.action_space.sample()]], device=device, dtype=torch.long)
     else:
         epsilon = max(EPSILON_MIN, epsilon*EPSILON_DECAY)
-        # IDK wtf this is, TODO
-        shit = policy_model(state).max(1).indices.view(1,1)
+        # ex: tensor([[0.1983, 0.1383]])
+        shit = policy_model(state)
+        #print(f"policy_model(state) {shit=}")
+        
+        # ex: torch.return_types.max(
+        # values=tensor([0.1983], device='cuda:0', grad_fn=<MaxBackward0>),
+        # indices=tensor([0], device='cuda:0'))
+        # indices are good enough for argmax
+        shit = shit.max(1)
+        #print(f"max(1) {shit=}")
+
+        # view dimensions are (1,1)
+        shit = shit.indices.view(1,1)
+        # ex: tensor([[0]])
+        #print(f"After it all: {shit=}")
         return shit
 
 
@@ -155,8 +168,81 @@ def optimize_model():
     # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
     # columns of actions taken. These are the actions which would've been taken
     # for each batch state according to policy_net
-    # TODO: wtf is gather
-    state_action_values = policy_model(state_batch).gather(1, action_batch)
+    """
+    TODO: wtf is gather?: 
+
+    multi-index selection method
+
+    >>> t = torch.tensor([[1, 2], 
+                          [3, 4]])
+    >>> torch.gather(t, 1, torch.tensor([[0, 0], [1, 0]]))
+    tensor([[ 1,  1],
+            [ 4,  3]])
+    
+    we are selecting elements from input
+
+    1 is dimension, we want to collect from second? dimension
+
+    indices for second dimension are [0,0], [1,0]
+
+
+    we skip the first dimension, so the result's 1st dim is the same as the index's first dimension???
+
+    indices hold second dimensions/column indices, not row indices
+        output will have in it's first row, a selection of elements from input's first row
+
+        for [0,0], we select the first elemnt of the first row of the input twice, [1,1] result
+
+
+    I HAVE NO FUCKING CLUE
+
+    same as
+    current_Q_values = Q(obs_batch).gather(1, act_batch.unsqueeze(1))
+
+    q_vals = []
+    for qv, ac in zip(Q(obs_batch), act_batch):
+        q_vals.append(qv[ac])
+    q_vals = torch.cat(q_vals, dim=0)
+    """
+    
+    policy_on_state_batch = policy_model(state_batch)
+    # note: n_actions=np.int64(2) n_observations=4
+
+    # state_batch.size()=torch.Size([128, 4]) 
+    # policy_on_state_batch.size()=torch.Size([128, 2]) 
+
+    # action_batch.size()=torch.Size([128, 1])    
+    """
+    This one is like
+
+    [1],
+    [1],
+    [1],
+    [1],
+    [0],
+    [0],
+    """
+
+    # state_action_values.size()=torch.Size([128, 1])
+    """
+    This one is like
+
+    [-3.4153e-03],
+    [ 2.3756e-01],
+    [ 2.4197e-01],
+    [-2.7275e-02],
+    [ 2.3714e-01],
+    [ 3.0386e-04],
+    [ 2.8522e-01],
+    [ 2.8025e-01]]
+    """
+
+    state_action_values = policy_on_state_batch.gather(1, action_batch)
+
+    # print(f"{state_batch.size()=} \
+    #       {policy_on_state_batch.size()=} \
+    #       {action_batch.size()=} \
+    #       {state_action_values=}")
 
     # Compute V(s_{t+1}) for all next states.
     # Expected values of actions for non_final_next_states are computed based
