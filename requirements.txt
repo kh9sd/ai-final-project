@@ -6,3 +6,5 @@ pandas
 #scipy
 # ipython
 jupyter
+
+tensorboard
