@@ -515,6 +515,5 @@ for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
 
         torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}_{i_episode}.h5')
 
+# TODO: need to save last iteration
 print('Complete')
-
-torch.save(policy_model.state_dict(), 'tutorial_model.h5')
