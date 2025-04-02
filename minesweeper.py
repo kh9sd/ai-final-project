@@ -1,5 +1,6 @@
 from minesweeper_env import MinesweeperEnv
 import random
+import os
 
 from collections import namedtuple, deque
 import itertools
@@ -404,6 +405,9 @@ log_dir_rel_path = writer.log_dir
 TRAINING_NAME = log_dir_rel_path.split("\\")[1]
 print(f"{TRAINING_NAME=}")
 
+os.mkdir(f'models/{TRAINING_NAME}')
+os.mkdir(f'replay/{TRAINING_NAME}')
+
 if torch.cuda.is_available() or torch.backends.mps.is_available():
     num_episodes = 100000
 else:
@@ -510,10 +514,10 @@ for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
         print(f'Episode: {i_episode}, Median progress: {median_progress}, Median reward: {median_reward}, Win rate : {win_rate}')
     
     if (i_episode % SAVE_MODEL_EVERY == 0):
-        with open(f'replay/{TRAINING_NAME}_{i_episode}.pkl', 'wb') as output:
+        with open(f'replay/{TRAINING_NAME}/{i_episode}.pkl', 'wb') as output:
             pickle.dump(memory, output)
 
-        torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}_{i_episode}.h5')
+        torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}/{i_episode}.h5')
 
-# TODO: need to save last iteration
+torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}/{num_episodes}.h5')
 print('Complete')
