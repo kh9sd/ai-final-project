@@ -217,7 +217,7 @@ optimization
 """
 
 memory = ReplayMemory(50000)
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 GAMMA = 0.1
 
 
@@ -530,6 +530,4 @@ print('Complete')
 TODOS
 
 decay learning rate
-
-switch batch size
 """
