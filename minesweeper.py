@@ -213,7 +213,7 @@ def select_action(state):
 optimization
 """
 
-memory = ReplayMemory(10000)
+memory = ReplayMemory(50000)
 BATCH_SIZE = 128
 GAMMA = 0.1
 
@@ -526,8 +526,6 @@ print('Complete')
 TODOS
 
 switch learn rate, and decay it
-
-switch replay buffer capacity
 
 switch batch size
 
