@@ -126,9 +126,12 @@ policy_model = DQN(n_actions=n_actions).to(device)
 target_model = DQN(n_actions=n_actions).to(device)
 target_model.load_state_dict(policy_model.state_dict())
 
-LEARNING_RATE = 1e-4
+learn_rate = 0.01
+LEARN_DECAY = 0.99975
+LEARN_MIN = 0.001
+
 # NOTE: own Adam, not AdamW
-optimizer = optim.Adam(policy_model.parameters(), lr=LEARNING_RATE, amsgrad=True)
+optimizer = optim.Adam(policy_model.parameters(), lr=learn_rate, amsgrad=True)
 
 
 """
@@ -526,7 +529,7 @@ print('Complete')
 """
 TODOS
 
-switch learn rate, and decay it
+decay learning rate
 
 switch batch size
 """
