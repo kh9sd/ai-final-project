@@ -15,9 +15,9 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import tqdm
 
-MINESWEEPER_HEIGHT = 6
-MINESWEEPER_WIDTH = 5
-MINESWEEPER_N_MINES = 5
+MINESWEEPER_HEIGHT = 9
+MINESWEEPER_WIDTH = 9
+MINESWEEPER_N_MINES = 10
 
 import pickle
 
@@ -48,7 +48,7 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
-CONV_FEATURES = 512
+CONV_FEATURES = 64
 LINEAR_FEATURES = 512
 
 class ConvRELu(nn.Module):
@@ -82,16 +82,16 @@ class DQN(nn.Module):
 
         self.first_conv_layer = ConvRELu(1)
         
-        self.second_conv_layer = ConvRELu(512)
-        self.third_conv_layer = ConvRELu(512)
-        self.fourth_conv_layer = ConvRELu(512)
+        self.second_conv_layer = ConvRELu(64)
+        self.third_conv_layer = ConvRELu(64)
+        self.fourth_conv_layer = ConvRELu(64)
         # self.second_conv_layer = LazyConvRELu()
         # self.third_conv_layer = LazyConvRELu()
         # self.fourth_conv_layer = LazyConvRELu()
 
         self.flatten = nn.Flatten()
 
-        self.first_linear = nn.Linear(512 * env.ntiles, LINEAR_FEATURES)
+        self.first_linear = nn.Linear(CONV_FEATURES * env.ntiles, LINEAR_FEATURES)
         #self.first_linear = nn.LazyLinear(LINEAR_FEATURES)
 
         self.remaining_layers = nn.Sequential(
@@ -108,7 +108,7 @@ class DQN(nn.Module):
         after_third = self.third_conv_layer(after_second)
         after_fourth = self.fourth_conv_layer(after_third)
 
-        #print(f"{after_first.size()=} \n{after_second.size()=} \n{after_third.size()=} \n{after_fourth.size()=}")
+        #print(f"{after_first.size()=} \n{after_second.size()=} \n{after_third.size()=} \n# {after_fourth.size()=}")
 
         flattened = self.flatten(after_fourth)
         #print(f"{flattened.size()=}")
@@ -521,3 +521,17 @@ for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
 
 torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}/{num_episodes}.h5')
 print('Complete')
+
+"""
+TODOS
+
+switch learn rate, and decay it
+
+switch replay buffer capacity
+
+switch batch size
+
+switch gamma
+
+switch target model update
+"""
