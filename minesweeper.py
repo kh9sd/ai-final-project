@@ -395,7 +395,8 @@ def optimize_model():
 Core loop
 """
 
-TARGET_MODEL_UPDATE_RATE = 0.005
+# NOTE: personally changed stat
+TARGET_MODEL_UPDATE_RATE = 0.05 
 AGG_STATS_EVERY = 100 # calculate stats every 100 games for tensorboard
 SAVE_MODEL_EVERY = 10_000 # save model and replay every 10,000 episodes
 
@@ -528,6 +529,4 @@ TODOS
 switch learn rate, and decay it
 
 switch batch size
-
-switch target model update
 """
