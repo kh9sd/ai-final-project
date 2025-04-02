@@ -215,7 +215,7 @@ optimization
 
 memory = ReplayMemory(10000)
 BATCH_SIZE = 128
-GAMMA = 0.99
+GAMMA = 0.1
 
 
 def optimize_model():
@@ -530,8 +530,6 @@ switch learn rate, and decay it
 switch replay buffer capacity
 
 switch batch size
-
-switch gamma
 
 switch target model update
 """
