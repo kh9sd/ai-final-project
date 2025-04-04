@@ -138,7 +138,7 @@ optimizer = optim.Adam(policy_model.parameters(), lr=learn_rate, amsgrad=True)
 Epsilon/ getting action
 """
 epsilon = 0.95
-EPSILON_DECAY = 0.99975
+EPSILON_DECAY = 0.999975
 EPSILON_MIN = 0.01
 
 #steps_done = 0
@@ -217,7 +217,7 @@ optimization
 """
 
 memory = ReplayMemory(50000)
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 GAMMA = 0.1
 
 
@@ -530,6 +530,4 @@ print('Complete')
 TODOS
 
 decay learning rate
-
-switch batch size
 """
