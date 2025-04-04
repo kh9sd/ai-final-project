@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import pandas as pd
+import math
 
 class MinesweeperEnv(object):
     def __init__(self, width, height, n_mines,
@@ -200,6 +201,21 @@ class MinesweeperEnv(object):
 
         return self.state_im
 
+    def are_neighbors_unexplored(self, coord):
+        #print(f"{self.state_im=} {coord=}")
+        x,y = coord
+
+        neighbors = []
+        for col in range(y-1, y+2):
+            for row in range(x-1, x+2):
+                if ((x != row or y != col) and
+                    (0 <= col < self.ncols) and
+                    (0 <= row < self.nrows)):
+                    neighbors.append(self.state_im[1, row,col])
+
+        return neighbors
+
+
     def step(self, action_index):
         done = False
         coords = self.state[action_index]['coord']
@@ -207,7 +223,8 @@ class MinesweeperEnv(object):
         current_state = self.state_im
 
         # get neighbors before action
-        neighbors = self.get_neighbors(coords)
+        # will be 1.0 is unexplored, 0.0 if explored
+        neighbors_unexplored = self.are_neighbors_unexplored(coords)
 
         self.click(action_index)
 
@@ -216,24 +233,33 @@ class MinesweeperEnv(object):
         self.state_im = new_state_im
         # print(f"{self.state_im=}")
 
+        number_of_unclicked_tiles_prev = np.sum(current_state[1])
+        number_of_unclicked_tiles_now = np.sum(self.state_im[1])
+        #print(f"{number_of_unclicked_tiles_prev=} {number_of_unclicked_tiles_now=}")
         if self.state[action_index]['value']=='B': # if lose
+            #print("Lose")
             reward = self.rewards['lose']
             done = True
 
-        elif np.sum(new_state_im==-0.125) == self.n_mines: # if win
+        elif math.isclose(number_of_unclicked_tiles_now, self.n_mines): # if win
+            #print("Win")
             reward = self.rewards['win']
             done = True
             self.n_progress += 1
             self.n_wins += 1
 
-        elif np.sum(self.state_im == -0.125) == np.sum(current_state == -0.125):
+        elif math.isclose(number_of_unclicked_tiles_now, number_of_unclicked_tiles_prev):
+            #print("No progress")
             reward = self.rewards['no_progress']
 
         else: # if progress
-            if all(t==-0.125 for t in neighbors): # if guess (all neighbors are unsolved)
+            # print(f"{neighbors_unexplored=}")
+            if all(math.isclose(neighbor, 1.0) for neighbor in neighbors_unexplored): # if guess (all neighbors are unsolved)
+                # print("Guess")
                 reward = self.rewards['guess']
 
             else:
+                #print("Progress")
                 reward = self.rewards['progress']
                 self.n_progress += 1 # track n of non-isoloated clicks
 
