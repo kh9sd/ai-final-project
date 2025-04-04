@@ -80,7 +80,7 @@ class DQN(nn.Module):
     def __init__(self, n_actions):
         super(DQN, self).__init__()
 
-        self.first_conv_layer = ConvRELu(1)
+        self.first_conv_layer = ConvRELu(2)
         
         self.second_conv_layer = ConvRELu(64)
         self.third_conv_layer = ConvRELu(64)
@@ -177,25 +177,24 @@ def select_action(state):
         """
         moves = policy_model(state)
 
-        assert(False)
         assert(moves.size() == (1, n_actions))
         # print(f"policy_model(state) {moves=}")
 
         # moves[board!=-0.125] = np.min(moves) # set already clicked tiles to min value
 
         # The basic idea is to set the Q-value already picked actions to the very minimum
+        # that way we do not pick it
         # NOTE: changed to be even below minimum
-        # TODO: this shit, wtf? strict equality
 
         solved_mask = torch.zeros(flattened_board.shape, dtype=torch.float32, device=device)
         shit_mask = torch.isclose(flattened_board, solved_mask)
         # shit_mask = flattened_board!=-0.125
-        # print(f"{shit_mask=}")
+        #print(f"{shit_mask=}")
 
-        print(f"{torch.min(moves)=}")
+        #print(f"{torch.min(moves)=}")
         moves[shit_mask] = torch.min(moves).item() - 1
 
-        print(f"{moves=}")
+        #print(f"{moves=}")
         
         """
         # ex: torch.return_types.max(
