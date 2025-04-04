@@ -149,21 +149,25 @@ def NHWC_to_NHWC(tensor):
 # Returns tensor of size =torch.Size([1, 1])
 def select_action(state):
     # print(f"{state.size()=}")
-    assert(state.size() == (1, 1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
+    assert(state.size() == (1, 2, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
     # print(f"{state=}")
 
     # NOTE: own epsilon decay
     global epsilon
     epsilon = max(EPSILON_MIN, epsilon*EPSILON_DECAY)
 
-    flattened_board = state.reshape(1, env.ntiles)
-    # print(f"{flattened_board=}")
+    flattened_board = state[0,1].reshape(1, env.ntiles)
+    #print(f"{flattened_board=}")
+    # expect to be 1 if unsolved
+    unsolved_mask = torch.ones(flattened_board.shape, dtype=torch.float32, device=device)
+
+    unsolved_action_tensor = torch.isclose(flattened_board, unsolved_mask)
+    #print(f"{unsolved_action_tensor=}")
 
     #if 1 < epsilon:
     if random.random() < epsilon:
         # actions indices, filter out already solved tiles
-        # TODO: make this not strict equality? floats?
-        unsolved_action_indices = [i for i, x in enumerate(flattened_board[0]) if x==-0.125]
+        unsolved_action_indices = [i for i, x in enumerate(unsolved_action_tensor[0]) if x == True]
         # print(f"{unsolved_action_indices=}")
 
         return torch.tensor([[random.choice(unsolved_action_indices)]], device=device, dtype=torch.long)
@@ -172,6 +176,8 @@ def select_action(state):
         # ex: tensor([[0.1983, 0.1383]])
         """
         moves = policy_model(state)
+
+        assert(False)
         assert(moves.size() == (1, n_actions))
         # print(f"policy_model(state) {moves=}")
 
@@ -180,13 +186,16 @@ def select_action(state):
         # The basic idea is to set the Q-value already picked actions to the very minimum
         # NOTE: changed to be even below minimum
         # TODO: this shit, wtf? strict equality
-        shit_mask = flattened_board!=-0.125
+
+        solved_mask = torch.zeros(flattened_board.shape, dtype=torch.float32, device=device)
+        shit_mask = torch.isclose(flattened_board, solved_mask)
+        # shit_mask = flattened_board!=-0.125
         # print(f"{shit_mask=}")
 
-        # print(f"{torch.min(moves)=}")
+        print(f"{torch.min(moves)=}")
         moves[shit_mask] = torch.min(moves).item() - 1
 
-        # print(f"{moves=}")
+        print(f"{moves=}")
         
         """
         # ex: torch.return_types.max(
@@ -420,14 +429,14 @@ else:
 print(f"Starting, {num_episodes=}")
 
 def env_state_to_tensor_batch_state(state):
-    assert(state.shape == (MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH, 1))
+    assert(state.shape == (2, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
 
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-    assert(state.size() == (1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH, 1))
+    assert(state.size() == (1, 2, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
 
-    state = NHWC_to_NHWC(state)
+    # state = NHWC_to_NHWC(state)
     # TODO: look at values, verify
-    assert(state.size() == (1, 1, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
+    assert(state.size() == (1, 2, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
 
     return state
 
