@@ -70,16 +70,31 @@ class MinesweeperEnv(object):
         This is what will be the input for the DQN.
         '''
 
+        #print(f"{state=}")
         state_im = [t['value'] for t in state]
-        state_im = np.reshape(state_im, (self.nrows, self.ncols, 1)).astype(object)
+        #print(f"{state_im=}")
 
-        state_im[state_im=='U'] = -1
-        state_im[state_im=='B'] = -2
+        # state_im = np.reshape(state_im, (self.nrows, self.ncols)).astype(object)
+        # we CANNOT do it the way above, it sometime casts number values (ex. 9) 
+        # into strings (ex. "9")
+        state_im = np.array(state_im, dtype=object)
+        state_im = np.reshape(state_im, (self.nrows, self.ncols))
 
-        state_im = state_im.astype(np.int8) / 8
-        state_im = state_im.astype(np.float16)
+        assert(type(state_im) == np.ndarray)
+        assert(state_im.shape == (self.nrows, self.ncols))
+        #print(f"{state_im=}")
 
-        return state_im
+        res = np.zeros((2, self.nrows, self.ncols))
+        # TODO: bomb state?
+        # for other paper, E is empty (rep by 0 i think for us)
+        # and they never give bomb states I guess
+        filtr = ~np.logical_or(state_im == "U", state_im == "B") #Not U or E
+        res[0, filtr] = state_im[filtr] / 4
+        res[1, state_im == "U"] = 1
+
+        #print(f"{res=}")
+
+        return res
 
     def init_state(self):
         unsolved_array = np.full((self.nrows, self.ncols), 'U', dtype='object')
@@ -126,16 +141,22 @@ class MinesweeperEnv(object):
 
     def click(self, action_index):
         #print(f"{self.state=}")
+        # print(f"{action_index=}")
         coord = self.state[action_index]['coord']
         value = self.board[coord]
 
         # ensure first move is not a bomb
         if (value == 'B') and (self.n_clicks == 0):
-            grid = self.grid.reshape(1, self.ntiles)
-            move = np.random.choice(np.nonzero(grid!='B')[1])
-            coord = self.state[move]['coord']
-            value = self.board[coord]
-            self.state[move]['value'] = value
+            # Just regenerate the board.
+            # print("Get fucked")
+            self.reset()
+            return self.click(action_index)
+
+            # grid = self.grid.reshape(1, self.ntiles)
+            # move = np.random.choice(np.nonzero(grid!='B')[1])
+            # coord = self.state[move]['coord']
+            # value = self.board[coord]
+            # self.state[move]['value'] = value
         else:
             # make state equal to board at given coordinates
             self.state[action_index]['value'] = value
@@ -193,6 +214,7 @@ class MinesweeperEnv(object):
         # update state image
         new_state_im = self.get_state_im(self.state)
         self.state_im = new_state_im
+        # print(f"{self.state_im=}")
 
         if self.state[action_index]['value']=='B': # if lose
             reward = self.rewards['lose']
