@@ -74,48 +74,136 @@ class LazyConvRELu(nn.Module):
     def forward(self, x):
         return self.layers(x)
 
+
+"""
+From the paper:
+
+# setup policy network
+n = 6
+n_inputs = 6*6*2
+n_hidden = 6*6*8
+n_hidden2 = 220
+n_hidden3 = 220
+n_outputs = 6*6
+
+input_layer = tf.reshape(states_pl, [-1, n, n, 2])
+conv1 = tf.layers.conv2d(inputs=input_layer,filters=18,kernel_size=[5, 5],padding="same", activation=tf.nn.relu)
+conv2 = tf.layers.conv2d(inputs=conv1,filters=36,kernel_size=[3, 3],padding="same", activation=tf.nn.relu)
+conv2_flat = tf.contrib.layers.flatten(conv2)
+l_hidden = tf.layers.dense(inputs=conv2_flat, units=n_hidden, activation=relu, name='l_hidden')
+l_hidden2 = tf.layers.dense(inputs=l_hidden, units=n_hidden2, activation=relu, name='l_hidden2')
+l_hidden3 = tf.layers.dense(inputs=l_hidden2, units=n_hidden3, activation=relu, name='l_hidden3')
+l_out = tf.layers.dense(inputs=l_hidden3, units=n_outputs, activation=softmax, name='l_out')
+"""
+
+
 # Our goal is to make a NN that will
 # state -> (Q(s,a_1), ..., Q(s,a_n))
 class DQN(nn.Module):
     def __init__(self, n_actions):
         super(DQN, self).__init__()
 
-        self.first_conv_layer = ConvRELu(2)
+        self.first_conv_layer = nn.Sequential(
+            # TODO: I think 18 is fine?
+            nn.Conv2d(in_channels=2, out_channels=18, kernel_size=5, padding='same'),
+            nn.ReLU()
+        )
         
-        self.second_conv_layer = ConvRELu(64)
-        self.third_conv_layer = ConvRELu(64)
-        self.fourth_conv_layer = ConvRELu(64)
-        # self.second_conv_layer = LazyConvRELu()
-        # self.third_conv_layer = LazyConvRELu()
-        # self.fourth_conv_layer = LazyConvRELu()
-
+        self.second_conv_layer = nn.Sequential(
+            # TODO: I think 36 is fine?
+            nn.Conv2d(in_channels=18, out_channels=36, kernel_size=3, padding='same'),
+            #nn.LazyConv2d(out_channels=36, kernel_size=3, padding='same'),
+            nn.ReLU()
+        )
+        
         self.flatten = nn.Flatten()
 
-        self.first_linear = nn.Linear(CONV_FEATURES * env.ntiles, LINEAR_FEATURES)
-        #self.first_linear = nn.LazyLinear(LINEAR_FEATURES)
+        #self.first_linear = nn.Linear(CONV_FEATURES * env.ntiles, LINEAR_FEATURES)
+        self.first_linear = nn.Sequential(
+            nn.Linear(in_features=36*n_actions, out_features=n_actions*8),
+            #nn.LazyLinear(out_features=MINESWEEPER_HEIGHT*MINESWEEPER_WIDTH*8),
+            nn.ReLU()
+        )
 
-        self.remaining_layers = nn.Sequential(
-                nn.ReLU(),
-                nn.Linear(LINEAR_FEATURES, LINEAR_FEATURES),
-                nn.ReLU(),
-                nn.Linear(LINEAR_FEATURES, n_actions))
+        self.second_linear = nn.Sequential(
+            # TODO: why 220 output.
+            nn.Linear(in_features=n_actions*8, out_features=220),
+            #nn.LazyLinear(out_features=220),
+            nn.ReLU()
+        )
+
+        self.third_linear = nn.Sequential(
+            # TODO: why 220 output.
+            nn.Linear(in_features=220, out_features=220),
+            # nn.LazyLinear(out_features=220),
+            nn.ReLU()
+        )
+
+        self.final_linear = nn.Sequential(
+            nn.Linear(in_features=220, out_features=n_actions),
+            #nn.LazyLinear(out_features=n_actions),
+            nn.Softmax(dim=1)
+        )
 
     # Called with either one element to determine next action, or a batch
     # during optimization. Returns tensor([[left0exp,right0exp]...]).
     def forward(self, x):
         after_first = self.first_conv_layer(x)
         after_second = self.second_conv_layer(after_first)
-        after_third = self.third_conv_layer(after_second)
-        after_fourth = self.fourth_conv_layer(after_third)
 
-        #print(f"{after_first.size()=} \n{after_second.size()=} \n{after_third.size()=} \n# {after_fourth.size()=}")
+        #print(f"{after_first.size()=} \n{after_second.size()=}")
 
-        flattened = self.flatten(after_fourth)
+        flattened = self.flatten(after_second)
         #print(f"{flattened.size()=}")
 
         after_first_linear = self.first_linear(flattened)
+        after_second_linear = self.second_linear(after_first_linear)
+        after_third_linear = self.third_linear(after_second_linear)
+        after_final_linear = self.final_linear(after_third_linear)
+        # print(f"{after_first_linear.size()=} \n{after_second_linear.size()=} \n{after_third_linear.size()=} \n{after_final_linear.size()=} \n")
 
-        return self.remaining_layers(after_first_linear)
+        return after_final_linear
+
+# class DQN(nn.Module):
+#     def __init__(self, n_actions):
+#         super(DQN, self).__init__()
+
+#         self.first_conv_layer = ConvRELu(2)
+        
+#         self.second_conv_layer = ConvRELu(64)
+#         self.third_conv_layer = ConvRELu(64)
+#         self.fourth_conv_layer = ConvRELu(64)
+#         # self.second_conv_layer = LazyConvRELu()
+#         # self.third_conv_layer = LazyConvRELu()
+#         # self.fourth_conv_layer = LazyConvRELu()
+
+#         self.flatten = nn.Flatten()
+
+#         self.first_linear = nn.Linear(CONV_FEATURES * env.ntiles, LINEAR_FEATURES)
+#         #self.first_linear = nn.LazyLinear(LINEAR_FEATURES)
+
+#         self.remaining_layers = nn.Sequential(
+#                 nn.ReLU(),
+#                 nn.Linear(LINEAR_FEATURES, LINEAR_FEATURES),
+#                 nn.ReLU(),
+#                 nn.Linear(LINEAR_FEATURES, n_actions))
+
+#     # Called with either one element to determine next action, or a batch
+#     # during optimization. Returns tensor([[left0exp,right0exp]...]).
+#     def forward(self, x):
+#         after_first = self.first_conv_layer(x)
+#         after_second = self.second_conv_layer(after_first)
+#         after_third = self.third_conv_layer(after_second)
+#         after_fourth = self.fourth_conv_layer(after_third)
+
+#         #print(f"{after_first.size()=} \n{after_second.size()=} \n{after_third.size()=} \n# {after_fourth.size()=}")
+
+#         flattened = self.flatten(after_fourth)
+#         #print(f"{flattened.size()=}")
+
+#         after_first_linear = self.first_linear(flattened)
+
+#         return self.remaining_layers(after_first_linear)
 
 n_actions = env.ntiles
 # reset returns state, info tuple
@@ -142,9 +230,6 @@ EPSILON_DECAY = 0.999975
 EPSILON_MIN = 0.01
 
 #steps_done = 0
-
-def NHWC_to_NHWC(tensor):
-    return tensor.permute(0, 3, 1, 2) # from NHWC to NCHW
 
 # Returns tensor of size =torch.Size([1, 1])
 def select_action(state):
@@ -364,7 +449,7 @@ def optimize_model():
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
 
-    criterion = nn.SmoothL1Loss()
+    criterion = nn.MSELoss()
     """
     unsqueeze:
 
@@ -433,7 +518,6 @@ def env_state_to_tensor_batch_state(state):
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     assert(state.size() == (1, 2, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
 
-    # state = NHWC_to_NHWC(state)
     # TODO: look at values, verify
     assert(state.size() == (1, 2, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
 
