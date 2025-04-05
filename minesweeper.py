@@ -421,7 +421,7 @@ os.mkdir(f'models/{TRAINING_NAME}')
 os.mkdir(f'replay/{TRAINING_NAME}')
 
 if torch.cuda.is_available() or torch.backends.mps.is_available():
-    num_episodes = 100000
+    num_episodes = 800000
 else:
     num_episodes = 50
 
