@@ -127,20 +127,22 @@ class DQN(nn.Module):
 
         self.second_linear = nn.Sequential(
             # TODO: why 220 output.
-            nn.Linear(in_features=n_actions*8, out_features=220),
+            # Scale by (9/6)**2 to match new grid
+            nn.Linear(in_features=n_actions*8, out_features=495),
             #nn.LazyLinear(out_features=220),
             nn.ReLU()
         )
 
         self.third_linear = nn.Sequential(
             # TODO: why 220 output.
-            nn.Linear(in_features=220, out_features=220),
+            # Scale by (9/6)**2 to match new grid
+            nn.Linear(in_features=495, out_features=495),
             # nn.LazyLinear(out_features=220),
             nn.ReLU()
         )
 
         self.final_linear = nn.Sequential(
-            nn.Linear(in_features=220, out_features=n_actions),
+            nn.Linear(in_features=495, out_features=n_actions),
             #nn.LazyLinear(out_features=n_actions),
             nn.Softmax(dim=1)
         )
@@ -252,6 +254,7 @@ def select_action(state):
     #if 1 < epsilon:
     if random.random() < epsilon:
         # actions indices, filter out already solved tiles
+        # TODO: assert never hit "same tile" reward
         unsolved_action_indices = [i for i, x in enumerate(unsolved_action_tensor[0]) if x == True]
         # print(f"{unsolved_action_indices=}")
 
