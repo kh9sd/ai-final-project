@@ -15,9 +15,9 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import tqdm
 
-MINESWEEPER_HEIGHT = 9
-MINESWEEPER_WIDTH = 9
-MINESWEEPER_N_MINES = 10
+MINESWEEPER_HEIGHT = 6
+MINESWEEPER_WIDTH = 6
+MINESWEEPER_N_MINES = 6
 
 import pickle
 
@@ -48,31 +48,31 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
-CONV_FEATURES = 64
-LINEAR_FEATURES = 512
+# CONV_FEATURES = 64
+# LINEAR_FEATURES = 512
 
-class ConvRELu(nn.Module):
-    def __init__(self, n_inputs):
-        super(ConvRELu, self).__init__()
-        self.layers = nn.Sequential(
-                nn.Conv2d(n_inputs, CONV_FEATURES, kernel_size=3,  padding='same'),
-                nn.ReLU(),
-        )
+# class ConvRELu(nn.Module):
+#     def __init__(self, n_inputs):
+#         super(ConvRELu, self).__init__()
+#         self.layers = nn.Sequential(
+#                 nn.Conv2d(n_inputs, CONV_FEATURES, kernel_size=3,  padding='same'),
+#                 nn.ReLU(),
+#         )
     
-    def forward(self, x):
-        return self.layers(x)
+#     def forward(self, x):
+#         return self.layers(x)
 
 
-class LazyConvRELu(nn.Module):
-    def __init__(self):
-        super(LazyConvRELu, self).__init__()
-        self.layers = nn.Sequential(
-                nn.LazyConv2d(CONV_FEATURES, kernel_size=3, padding='same'),
-                nn.ReLU(),
-        )
+# class LazyConvRELu(nn.Module):
+#     def __init__(self):
+#         super(LazyConvRELu, self).__init__()
+#         self.layers = nn.Sequential(
+#                 nn.LazyConv2d(CONV_FEATURES, kernel_size=3, padding='same'),
+#                 nn.ReLU(),
+#         )
     
-    def forward(self, x):
-        return self.layers(x)
+#     def forward(self, x):
+#         return self.layers(x)
 
 
 """
@@ -127,22 +127,20 @@ class DQN(nn.Module):
 
         self.second_linear = nn.Sequential(
             # TODO: why 220 output.
-            # Scale by (9/6)**2 to match new grid
-            nn.Linear(in_features=n_actions*8, out_features=495),
+            nn.Linear(in_features=n_actions*8, out_features=220),
             #nn.LazyLinear(out_features=220),
             nn.ReLU()
         )
 
         self.third_linear = nn.Sequential(
             # TODO: why 220 output.
-            # Scale by (9/6)**2 to match new grid
-            nn.Linear(in_features=495, out_features=495),
+            nn.Linear(in_features=220, out_features=220),
             # nn.LazyLinear(out_features=220),
             nn.ReLU()
         )
 
         self.final_linear = nn.Sequential(
-            nn.Linear(in_features=495, out_features=n_actions),
+            nn.Linear(in_features=220, out_features=n_actions),
             #nn.LazyLinear(out_features=n_actions),
             nn.Softmax(dim=1)
         )
@@ -162,7 +160,7 @@ class DQN(nn.Module):
         after_second_linear = self.second_linear(after_first_linear)
         after_third_linear = self.third_linear(after_second_linear)
         after_final_linear = self.final_linear(after_third_linear)
-        # print(f"{after_first_linear.size()=} \n{after_second_linear.size()=} \n{after_third_linear.size()=} \n{after_final_linear.size()=} \n")
+        #print(f"{after_first_linear.size()=} \n{after_second_linear.size()=} \n{after_third_linear.size()=} \n{after_final_linear.size()=} \n")
 
         return after_final_linear
 
@@ -316,6 +314,9 @@ memory = ReplayMemory(50000)
 BATCH_SIZE = 64
 GAMMA = 0.1
 
+AGG_STATS_EVERY = 100 # calculate stats every 100 games for tensorboard
+# just add -99, just so doesn't divide by 0 first time
+loss_storage = deque([-99], maxlen=AGG_STATS_EVERY * 5)
 
 def optimize_model():
     if len(memory) < BATCH_SIZE:
@@ -452,7 +453,7 @@ def optimize_model():
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
 
-    criterion = nn.MSELoss()
+    criterion = nn.HuberLoss()
     """
     unsqueeze:
 
@@ -478,6 +479,9 @@ def optimize_model():
     # expected_state_action_values.size()=torch.Size([128])
     """
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+    #print(f"{loss=} {loss.size()=}")
+    assert(loss.size() == ())
+    loss_storage.append(loss.item())
 
     # Optimize the model
     optimizer.zero_grad()
@@ -496,7 +500,6 @@ Core loop
 
 # NOTE: personally changed stat
 TARGET_MODEL_UPDATE_RATE = 0.05 
-AGG_STATS_EVERY = 100 # calculate stats every 100 games for tensorboard
 SAVE_MODEL_EVERY = 10_000 # save model and replay every 10,000 episodes
 
 writer = SummaryWriter(comment="_minesweeper")
@@ -604,13 +607,15 @@ for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
         median_progress = np.median(progress_list[-AGG_STATS_EVERY:])
         win_rate = np.sum(wins_list[-AGG_STATS_EVERY:]) / AGG_STATS_EVERY
         median_reward = np.median(episode_rewards[-AGG_STATS_EVERY:])
+        median_loss = np.median(loss_storage)
 
         writer.add_scalar("Median progress/train", median_progress, i_episode)
         writer.add_scalar("Win rate/train", win_rate, i_episode)
         writer.add_scalar("Median reward/train", median_reward, i_episode)
+        writer.add_scalar("Median loss/train", median_loss, i_episode)
         writer.add_scalar("Epsilon", epsilon, i_episode)
 
-        print(f'Episode: {i_episode}, Median progress: {median_progress}, Median reward: {median_reward}, Win rate : {win_rate}')
+        print(f'Episode: {i_episode}, Median progress: {median_progress}, Median reward: {median_reward}, Median loss: {median_loss}, Win rate : {win_rate}')
     
     if (i_episode % SAVE_MODEL_EVERY == 0):
         with open(f'replay/{TRAINING_NAME}/{i_episode}.pkl', 'wb') as output:
