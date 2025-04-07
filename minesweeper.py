@@ -343,7 +343,7 @@ GAMMA = 0.1
 
 AGG_STATS_EVERY = 100 # calculate stats every 100 games for tensorboard
 # just add -99, just so doesn't divide by 0 first time
-loss_storage = deque([-99], maxlen=AGG_STATS_EVERY * 5)
+loss_storage = deque([0], maxlen=AGG_STATS_EVERY * 5)
 
 def optimize_model():
     if len(memory) < BATCH_SIZE:
