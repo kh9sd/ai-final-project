@@ -214,9 +214,35 @@ policy_model = DQN(n_actions=n_actions).to(device)
 target_model = DQN(n_actions=n_actions).to(device)
 target_model.load_state_dict(policy_model.state_dict())
 
-learn_rate = 0.01
+# parser.set_defaults(learning_rate=0.00025)
+# parser.set_defaults(learning_rate_step=20000)
+# parser.set_defaults(learning_rate_decay=0.90)
+# parser.set_defaults(learning_rate_minimum=0.00025/4)
+
+# Learning rate decay
+# When training a model, it is often recommended to lower the 
+# learning rate as the training progresses. 
+# This function applies an exponential decay function to a 
+# provided initial learning rate.
+# Uses global_iteration to compute the decayed learning rate.
+# self.learning_rate   = tf.train.exponential_decay(
+#     self.learning_rate_base, self.global_iteration,
+#     self.learning_rate_step, self.learning_rate_decay,
+#     staircase=True
+# )
+
+# self.learning_rate = tf.maximum(self.learning_rate, 
+#                         self.learning_rate_min)
+
+learn_rate = 0.00025
 LEARN_DECAY = 0.99975
 LEARN_MIN = 0.001
+
+
+# Adam Optimizer
+# self.optimizer = tf.train.AdamOptimizer(
+#                     learning_rate=self.learning_rate,
+#                     epsilon=1.5e-4) # From Rainbow paper
 
 # NOTE: own Adam, not AdamW
 optimizer = optim.Adam(policy_model.parameters(), lr=learn_rate, amsgrad=True)
@@ -225,6 +251,7 @@ optimizer = optim.Adam(policy_model.parameters(), lr=learn_rate, amsgrad=True)
 """
 Epsilon/ getting action
 """
+# self.epsilon = max(self.params.min_epsilon, 1.0-float(self.train_iteration*self.params.train_freq) / float(self.params.epsilon_step))
 epsilon = 0.95
 EPSILON_DECAY = 0.999975
 EPSILON_MIN = 0.01
@@ -478,6 +505,7 @@ def optimize_model():
     # state_action_values.size()=torch.Size([128, 1])
     # expected_state_action_values.size()=torch.Size([128])
     """
+    # why loss is just 1 element tensor? bc HuberLoss does by default, means them
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
     #print(f"{loss=} {loss.size()=}")
     assert(loss.size() == ())
@@ -499,7 +527,11 @@ Core loop
 """
 
 # NOTE: personally changed stat
-TARGET_MODEL_UPDATE_RATE = 0.05 
+# TODO: revisit this
+# NOTE: og PyTorch was 0.005
+# if self.train_iteration % self.params.network_update_rate == 0:
+# parser.set_defaults(network_update_rate=int(1e5))
+TARGET_MODEL_UPDATE_RATE = 1e-5 
 SAVE_MODEL_EVERY = 10_000 # save model and replay every 10,000 episodes
 
 writer = SummaryWriter(comment="_minesweeper")
