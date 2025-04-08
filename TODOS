@@ -2,10 +2,6 @@ https://discuss.pytorch.org/t/why-is-my-dqn-deep-q-network-not-learning/126336/9
 
 try to visualize choices
 
-report loss
-
 try mean squared, not huber?
-
-diff gym: condensed shit?
 
 https://github.com/jakejhansen/minesweeper_solver/blob/master/q_learning/train.py

@@ -254,7 +254,7 @@ Epsilon/ getting action
 # self.epsilon = max(self.params.min_epsilon, 1.0-float(self.train_iteration*self.params.train_freq) / float(self.params.epsilon_step))
 epsilon = 0.95
 EPSILON_DECAY = 0.999975
-EPSILON_MIN = 0.01
+EPSILON_MIN = 0.1
 
 #steps_done = 0
 
@@ -337,7 +337,7 @@ def select_action(state):
 optimization
 """
 
-memory = ReplayMemory(50000)
+memory = ReplayMemory(1e6)
 BATCH_SIZE = 64
 GAMMA = 0.1
 
