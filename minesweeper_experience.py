@@ -78,44 +78,22 @@ while True:
     window = tkinter.Tk()
     window.minsize(width=PIXELS_PER_SQUARE*MINESWEEPER_WIDTH, height=PIXELS_PER_SQUARE*MINESWEEPER_HEIGHT)
 
-    #canvas = tkinter.Canvas(width=PIXELS_PER_SQUARE*MINESWEEPER_WIDTH, height=PIXELS_PER_SQUARE*MINESWEEPER_HEIGHT)
-
-
-    # self.fill_canvas(canvas)
-    # canvas.pack()
-
-    # button = tkinter.Button(text='go', command=self.button_clicked, width=5, height=2)
-    # button.pack()
-
-    # window.mainloop()
-
     for state_coord_info in env.state:
         # each is like {'coord': (0, 0), 'value': 'U'}
         x, y = state_coord_info['coord']
         value = state_coord_info['value']
         print(f"{x=} {y=} {value=}")
 
-        #e = tkinter.Label(window, background='white' if random.random() < 0.5 else 'black')
         text, color = get_color_and_number(value)
-        e = tkinter.Label(window, font=("Courier", 44), text=text, background=color)
+
+        e = tkinter.Label(window, highlightbackground="black", highlightthickness=2, borderwidth=2, font=("Courier", 44), text=text, background=color)
         # TODO: verify, are x and y swapped?
         e.grid(row=x, column=y, sticky='nwse')
-
-        # for i in range(self.universe.max_row):
-        #     self.cells.append([])
-        #     for j in range(self.universe.max_col):
-        #         e = tkinter.Entry(canvas, width=2, background='white' if self.universe.board[i][j] == 0 else 'black')
-        #         e.grid(row=i, column=j)
-        #         self.cells[i].append(e)
 
     window.grid_columnconfigure(list(range(6)), minsize=PIXELS_PER_SQUARE)
     window.grid_rowconfigure(list(range(6)), minsize=PIXELS_PER_SQUARE)
 
-
-    # canvas.pack()
     window.mainloop()
-
-    print("hi")
 
     action = random.randint(0, 35)
     env.step(action)
