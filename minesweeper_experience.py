@@ -63,42 +63,59 @@ print(f"{state_im=}")
 #                 self.cells[i].append(e)
 
 PIXELS_PER_SQUARE = 70
-window = tkinter.Tk()
-window.minsize(width=PIXELS_PER_SQUARE*MINESWEEPER_WIDTH, height=PIXELS_PER_SQUARE*MINESWEEPER_HEIGHT)
 
-#canvas = tkinter.Canvas(width=PIXELS_PER_SQUARE*MINESWEEPER_WIDTH, height=PIXELS_PER_SQUARE*MINESWEEPER_HEIGHT)
+def get_color_and_number(value):
+    if value == 'B':
+        return "", "red"
+    elif value == 'U':
+        return "", "white"
+    else:
+        return value, "light gray"
 
-
-# self.fill_canvas(canvas)
-# canvas.pack()
-
-# button = tkinter.Button(text='go', command=self.button_clicked, width=5, height=2)
-# button.pack()
-
-# window.mainloop()
 
 import random
-for state_coord_info in env.state:
-    # each is like {'coord': (0, 0), 'value': 'U'}
-    x, y = state_coord_info['coord']
-    value = state_coord_info['value']
-    print(f"{x=} {y=} {value=}")
+while True:
+    window = tkinter.Tk()
+    window.minsize(width=PIXELS_PER_SQUARE*MINESWEEPER_WIDTH, height=PIXELS_PER_SQUARE*MINESWEEPER_HEIGHT)
 
-    e = tkinter.Label(window, background='white' if random.random() < 0.5 else 'black')
-    #e = tkinter.Label(window, background='white' if value == 'U' else 'black')
-    # TODO: verify, are x and y swapped?
-    e.grid(row=x, column=y, sticky='nwse')
-
-    # for i in range(self.universe.max_row):
-    #     self.cells.append([])
-    #     for j in range(self.universe.max_col):
-    #         e = tkinter.Entry(canvas, width=2, background='white' if self.universe.board[i][j] == 0 else 'black')
-    #         e.grid(row=i, column=j)
-    #         self.cells[i].append(e)
-
-window.grid_columnconfigure(list(range(6)), minsize=PIXELS_PER_SQUARE)
-window.grid_rowconfigure(list(range(6)), minsize=PIXELS_PER_SQUARE)
+    #canvas = tkinter.Canvas(width=PIXELS_PER_SQUARE*MINESWEEPER_WIDTH, height=PIXELS_PER_SQUARE*MINESWEEPER_HEIGHT)
 
 
-# canvas.pack()
-window.mainloop()
+    # self.fill_canvas(canvas)
+    # canvas.pack()
+
+    # button = tkinter.Button(text='go', command=self.button_clicked, width=5, height=2)
+    # button.pack()
+
+    # window.mainloop()
+
+    for state_coord_info in env.state:
+        # each is like {'coord': (0, 0), 'value': 'U'}
+        x, y = state_coord_info['coord']
+        value = state_coord_info['value']
+        print(f"{x=} {y=} {value=}")
+
+        #e = tkinter.Label(window, background='white' if random.random() < 0.5 else 'black')
+        text, color = get_color_and_number(value)
+        e = tkinter.Label(window, font=("Courier", 44), text=text, background=color)
+        # TODO: verify, are x and y swapped?
+        e.grid(row=x, column=y, sticky='nwse')
+
+        # for i in range(self.universe.max_row):
+        #     self.cells.append([])
+        #     for j in range(self.universe.max_col):
+        #         e = tkinter.Entry(canvas, width=2, background='white' if self.universe.board[i][j] == 0 else 'black')
+        #         e.grid(row=i, column=j)
+        #         self.cells[i].append(e)
+
+    window.grid_columnconfigure(list(range(6)), minsize=PIXELS_PER_SQUARE)
+    window.grid_rowconfigure(list(range(6)), minsize=PIXELS_PER_SQUARE)
+
+
+    # canvas.pack()
+    window.mainloop()
+
+    print("hi")
+
+    action = random.randint(0, 35)
+    env.step(action)
