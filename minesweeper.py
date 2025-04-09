@@ -337,7 +337,7 @@ def select_action(state):
 optimization
 """
 
-memory = ReplayMemory(1e6)
+memory = ReplayMemory(1000000)
 BATCH_SIZE = 64
 GAMMA = 0.1
 
