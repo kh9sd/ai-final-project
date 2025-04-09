@@ -650,8 +650,8 @@ for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
         print(f'Episode: {i_episode}, Median progress: {median_progress}, Median reward: {median_reward}, Median loss: {median_loss}, Win rate : {win_rate}')
     
     if (i_episode % SAVE_MODEL_EVERY == 0):
-        with open(f'replay/{TRAINING_NAME}/{i_episode}.pkl', 'wb') as output:
-            pickle.dump(memory, output)
+        # with open(f'replay/{TRAINING_NAME}/{i_episode}.pkl', 'wb') as output:
+        #     pickle.dump(memory, output)
 
         torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}/{i_episode}.h5')
 
