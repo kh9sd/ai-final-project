@@ -33,7 +33,7 @@ def get_color_and_number(value):
 state, done = env.reset(), False
 print(f"{state=} {env.state=}")
 
-while not done:
+def display_minesweeper_window(env):
     window = tkinter.Tk()
     window.minsize(width=PIXELS_PER_SQUARE*MINESWEEPER_WIDTH, height=PIXELS_PER_SQUARE*MINESWEEPER_HEIGHT)
 
@@ -54,8 +54,14 @@ while not done:
 
     window.mainloop()
 
+while not done:
+    display_minesweeper_window(env)
+
     action = random.randint(0, 35)
 
     new_state, _, new_done = env.step(action)
 
     state, done = new_state, new_done
+
+# display ending move
+display_minesweeper_window(env)
