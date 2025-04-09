@@ -520,36 +520,6 @@ def optimize_model():
     optimizer.step()
 
 
-
-
-"""
-Core loop
-"""
-
-# NOTE: personally changed stat
-# TODO: revisit this
-# NOTE: og PyTorch was 0.005
-# if self.train_iteration % self.params.network_update_rate == 0:
-# parser.set_defaults(network_update_rate=int(1e5))
-TARGET_MODEL_UPDATE_RATE = 1e-5 
-SAVE_MODEL_EVERY = 10_000 # save model and replay every 10,000 episodes
-
-writer = SummaryWriter(comment="_minesweeper")
-log_dir_rel_path = writer.log_dir
-
-TRAINING_NAME = log_dir_rel_path.split("\\")[1]
-print(f"{TRAINING_NAME=}")
-
-os.mkdir(f'models/{TRAINING_NAME}')
-os.mkdir(f'replay/{TRAINING_NAME}')
-
-if torch.cuda.is_available() or torch.backends.mps.is_available():
-    num_episodes = 800000
-else:
-    num_episodes = 50
-
-print(f"Starting, {num_episodes=}")
-
 def env_state_to_tensor_batch_state(state):
     assert(state.shape == (2, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
 
@@ -561,105 +531,133 @@ def env_state_to_tensor_batch_state(state):
 
     return state
 
-progress_list = []
-episode_rewards = []
-wins_list = []
-
-#for i_episode in range(num_episodes):
-for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
-    # print(f"{i_episode=}")
-    # Initialize the environment and get its state
-    state = env.reset()
-    """
-    # state is np array,
-    # state=array([0.01756821, 0.03350502, 0.02066539, 0.04153426], dtype=float32)
-    """
-    # print(f"{state=} {state.shape=}")
-    state = env_state_to_tensor_batch_state(state) 
-    
-    past_env_wins = env.n_wins
-    episode_reward = 0
-
-    # count is an infinite generator
-    for t in itertools.count():
-        # print(f"{t=}")
-        action = select_action(state)
-        observation, reward, done = env.step(action.item())
-        episode_reward += reward
-
-        reward = torch.tensor([reward], device=device)
-
-        if done:
-            next_state = None
-        else:
-            next_state = env_state_to_tensor_batch_state(observation)
-        """
-        # state.size()=torch.Size([1, 4]) 
-        # action.size()=torch.Size([1, 1]) 
-        # next_state.size()=torch.Size([1, 4]) 
-        # reward.size()=torch.Size([1])
-        """
-        # print(f"{state.size()=} {action.size()=} {next_state.size()=} {reward.size()=}")
-
-        """
-        # state=tensor([[-0.0262, -0.4380,  0.1120,  0.7674]], device='cuda:0') 
-        # action=tensor([[0]], device='cuda:0') 
-        # next_state=tensor([[-0.0349, -0.6345,  0.1274,  1.0932]], device='cuda:0') 
-        # reward=tensor([1.], device='cuda:0')
-        """
-        # print(f"{state=} {action=} {next_state=} {reward=}")
-
-        # Store the transition in memory
-        memory.push(Transition(state, action, next_state, reward))
-
-        # Move to the next state
-        state = next_state
-
-        # Perform one step of the optimization (on the policy network)
-        optimize_model()
-
-        # This is the target updating
-        # Soft update of the target network's weights
-        # θ′ ← τ θ + (1 −τ )θ′
-        target_net_state_dict = target_model.state_dict()
-        policy_net_state_dict = policy_model.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key]*TARGET_MODEL_UPDATE_RATE + target_net_state_dict[key]*(1-TARGET_MODEL_UPDATE_RATE)
-        target_model.load_state_dict(target_net_state_dict)
-
-        if done:
-            break
-    
-    # After a game, metrics
-    progress_list.append(env.n_progress) # n of non-guess moves
-    episode_rewards.append(episode_reward)
-    wins_list.append(env.n_wins - past_env_wins)
-    
-    if (i_episode % AGG_STATS_EVERY == 0):
-        median_progress = np.median(progress_list[-AGG_STATS_EVERY:])
-        win_rate = np.sum(wins_list[-AGG_STATS_EVERY:]) / AGG_STATS_EVERY
-        median_reward = np.median(episode_rewards[-AGG_STATS_EVERY:])
-        median_loss = np.median(loss_storage)
-
-        writer.add_scalar("Median progress/train", median_progress, i_episode)
-        writer.add_scalar("Win rate/train", win_rate, i_episode)
-        writer.add_scalar("Median reward/train", median_reward, i_episode)
-        writer.add_scalar("Median loss/train", median_loss, i_episode)
-        writer.add_scalar("Epsilon", epsilon, i_episode)
-
-        print(f'Episode: {i_episode}, Median progress: {median_progress}, Median reward: {median_reward}, Median loss: {median_loss}, Win rate : {win_rate}')
-    
-    if (i_episode % SAVE_MODEL_EVERY == 0):
-        # with open(f'replay/{TRAINING_NAME}/{i_episode}.pkl', 'wb') as output:
-        #     pickle.dump(memory, output)
-
-        torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}/{i_episode}.h5')
-
-torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}/{num_episodes}.h5')
-print('Complete')
-
 """
-TODOS
-
-decay learning rate
+Core loop
 """
+if __name__ == '__main__':
+    # NOTE: personally changed stat
+    # TODO: revisit this
+    # NOTE: og PyTorch was 0.005
+    # if self.train_iteration % self.params.network_update_rate == 0:
+    # parser.set_defaults(network_update_rate=int(1e5))
+    TARGET_MODEL_UPDATE_RATE = 1e-5 
+    SAVE_MODEL_EVERY = 10_000 # save model and replay every 10,000 episodes
+
+    writer = SummaryWriter(comment="_minesweeper")
+    log_dir_rel_path = writer.log_dir
+
+    TRAINING_NAME = log_dir_rel_path.split("\\")[1]
+    print(f"{TRAINING_NAME=}")
+
+    os.mkdir(f'models/{TRAINING_NAME}')
+    os.mkdir(f'replay/{TRAINING_NAME}')
+
+    if torch.cuda.is_available() or torch.backends.mps.is_available():
+        num_episodes = 800000
+    else:
+        num_episodes = 50
+
+    print(f"Starting, {num_episodes=}")
+
+    progress_list = []
+    episode_rewards = []
+    wins_list = []
+
+    #for i_episode in range(num_episodes):
+    for i_episode in tqdm.tqdm(range(num_episodes), unit='episode'):
+        # print(f"{i_episode=}")
+        # Initialize the environment and get its state
+        state = env.reset()
+        """
+        # state is np array,
+        # state=array([0.01756821, 0.03350502, 0.02066539, 0.04153426], dtype=float32)
+        """
+        # print(f"{state=} {state.shape=}")
+        state = env_state_to_tensor_batch_state(state) 
+        
+        past_env_wins = env.n_wins
+        episode_reward = 0
+
+        # count is an infinite generator
+        for t in itertools.count():
+            # print(f"{t=}")
+            action = select_action(state)
+            observation, reward, done = env.step(action.item())
+            episode_reward += reward
+
+            reward = torch.tensor([reward], device=device)
+
+            if done:
+                next_state = None
+            else:
+                next_state = env_state_to_tensor_batch_state(observation)
+            """
+            # state.size()=torch.Size([1, 4]) 
+            # action.size()=torch.Size([1, 1]) 
+            # next_state.size()=torch.Size([1, 4]) 
+            # reward.size()=torch.Size([1])
+            """
+            # print(f"{state.size()=} {action.size()=} {next_state.size()=} {reward.size()=}")
+
+            """
+            # state=tensor([[-0.0262, -0.4380,  0.1120,  0.7674]], device='cuda:0') 
+            # action=tensor([[0]], device='cuda:0') 
+            # next_state=tensor([[-0.0349, -0.6345,  0.1274,  1.0932]], device='cuda:0') 
+            # reward=tensor([1.], device='cuda:0')
+            """
+            # print(f"{state=} {action=} {next_state=} {reward=}")
+
+            # Store the transition in memory
+            memory.push(Transition(state, action, next_state, reward))
+
+            # Move to the next state
+            state = next_state
+
+            # Perform one step of the optimization (on the policy network)
+            optimize_model()
+
+            # This is the target updating
+            # Soft update of the target network's weights
+            # θ′ ← τ θ + (1 −τ )θ′
+            target_net_state_dict = target_model.state_dict()
+            policy_net_state_dict = policy_model.state_dict()
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[key]*TARGET_MODEL_UPDATE_RATE + target_net_state_dict[key]*(1-TARGET_MODEL_UPDATE_RATE)
+            target_model.load_state_dict(target_net_state_dict)
+
+            if done:
+                break
+        
+        # After a game, metrics
+        progress_list.append(env.n_progress) # n of non-guess moves
+        episode_rewards.append(episode_reward)
+        wins_list.append(env.n_wins - past_env_wins)
+        
+        if (i_episode % AGG_STATS_EVERY == 0):
+            median_progress = np.median(progress_list[-AGG_STATS_EVERY:])
+            win_rate = np.sum(wins_list[-AGG_STATS_EVERY:]) / AGG_STATS_EVERY
+            median_reward = np.median(episode_rewards[-AGG_STATS_EVERY:])
+            median_loss = np.median(loss_storage)
+
+            writer.add_scalar("Median progress/train", median_progress, i_episode)
+            writer.add_scalar("Win rate/train", win_rate, i_episode)
+            writer.add_scalar("Median reward/train", median_reward, i_episode)
+            writer.add_scalar("Median loss/train", median_loss, i_episode)
+            writer.add_scalar("Epsilon", epsilon, i_episode)
+
+            print(f'Episode: {i_episode}, Median progress: {median_progress}, Median reward: {median_reward}, Median loss: {median_loss}, Win rate : {win_rate}')
+        
+        if (i_episode % SAVE_MODEL_EVERY == 0):
+            # with open(f'replay/{TRAINING_NAME}/{i_episode}.pkl', 'wb') as output:
+            #     pickle.dump(memory, output)
+
+            torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}/{i_episode}.h5')
+
+    torch.save(policy_model.state_dict(), f'models/{TRAINING_NAME}/{num_episodes}.h5')
+    print('Complete')
+
+    """
+    TODOS
+
+    decay learning rate
+    """
