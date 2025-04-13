@@ -337,7 +337,7 @@ def select_action(state):
 optimization
 """
 
-memory = ReplayMemory(1000000)
+memory = ReplayMemory(200_000)
 BATCH_SIZE = 64
 GAMMA = 0.1
 
@@ -516,7 +516,7 @@ def optimize_model():
     loss.backward()
     # In-place gradient clipping
     # basically, dont make the gradient too big
-    torch.nn.utils.clip_grad_value_(policy_model.parameters(), 100)
+    # torch.nn.utils.clip_grad_value_(policy_model.parameters(), 100)
     optimizer.step()
 
 
