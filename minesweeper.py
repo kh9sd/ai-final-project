@@ -339,7 +339,7 @@ optimization
 
 memory = ReplayMemory(200_000)
 BATCH_SIZE = 64
-GAMMA = 0.99
+GAMMA = 0.0
 
 AGG_STATS_EVERY = 100 # calculate stats every 100 games for tensorboard
 # just add -99, just so doesn't divide by 0 first time
