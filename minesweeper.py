@@ -15,9 +15,9 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import tqdm
 
-MINESWEEPER_HEIGHT = 6
-MINESWEEPER_WIDTH = 6
-MINESWEEPER_N_MINES = 6
+MINESWEEPER_HEIGHT = 9
+MINESWEEPER_WIDTH = 9
+MINESWEEPER_N_MINES = 10
 
 import pickle
 
@@ -120,6 +120,7 @@ class DQN(nn.Module):
 
         #self.first_linear = nn.Linear(CONV_FEATURES * env.ntiles, LINEAR_FEATURES)
         self.first_linear = nn.Sequential(
+            # 36 out channels, times size of grid
             nn.Linear(in_features=36*n_actions, out_features=n_actions*8),
             #nn.LazyLinear(out_features=MINESWEEPER_HEIGHT*MINESWEEPER_WIDTH*8),
             nn.ReLU()
