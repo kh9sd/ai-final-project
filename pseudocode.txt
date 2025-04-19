@@ -1,0 +1,46 @@
+replay_buffer = {}
+policy_model = NN()
+target_model = NN()
+
+def select_action(state):
+    do epsilon decay
+
+    if random < epsilon:
+        return action_space.sample
+    else:
+        output_q_vals = model(state)
+        return argmax(output_q_vals)
+
+BATCH_SIZE = ...
+
+def optimize_model():
+    s_batch, a_batch, s'_batch, r_batch = replay_buffer.sample(BATCH_SIZE)
+
+    q_s_a_batch = policy_model(s_batch), using a_batch for actions
+
+    q_s'_a_batch = max(target_model(s'_batch), 0 for s' if s' terminal)
+
+    expected_q_s_a_batch = q_s'_a_batch + reward_batch
+
+    train policy_model, with loss from q_s_a_batch vs expected_q_s_a_batch
+
+
+TARGET_UPDATE_RATE = ...
+
+def core_loop():
+    for episode in NUM_EPISODES:
+        s = env.reset()
+
+        while True:
+            a = select_action(s)
+            s', r, done = env.step(a)     
+
+            replay_buffer.push((s,a,s',r))
+            s = s'
+            optimize_model()
+
+            target_model.weights = target_model.weights * (1-TARGET_UPDATE_RATE) 
+                            + policy_model.weights * TARGET_UPDATE_RATE
+
+            if done:
+                break
