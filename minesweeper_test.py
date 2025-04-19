@@ -1,5 +1,6 @@
 from minesweeper_env import MinesweeperEnv
 
+import tqdm
 import torch
 from minesweeper import DQN
 
@@ -11,8 +12,6 @@ env = MinesweeperEnv(width=MINESWEEPER_WIDTH, height=MINESWEEPER_HEIGHT, n_mines
 
 print("playing new game")
 
-state, done = env.reset(), False
-print(f"{state=} {env.state=}")
 n_actions = env.ntiles
 
 policy_model = DQN(n_actions = n_actions)
@@ -84,11 +83,33 @@ def env_state_to_tensor_batch_state(state):
     return state
 
 
-while not done:
-    action = select_action(env_state_to_tensor_batch_state(state))
-    # print(f"{action=}")
+# returns 1 if won, 0 is lost
+def run_game():
+    past_n_wins = env.n_wins
+    state, done = env.reset(), False
 
-    new_state, _, new_done = env.step(action)
+    while not done:
+        action = select_action(env_state_to_tensor_batch_state(state))
+        # print(f"{action=}")
 
-    state, done = new_state, new_done
-    # print(f"{state}")
+        new_state, _, new_done = env.step(action)
+
+        state, done = new_state, new_done
+        # print(f"{state}")
+    
+    return env.n_wins - past_n_wins
+
+
+AGG_STATS_EVERY = 100 # calculate stats every 100
+GAMES_TO_PLAY = 1_000_000
+games_won = 0
+
+print(f"Running {GAMES_TO_PLAY} games for verification")
+
+for i_episode in tqdm.tqdm(range(1, GAMES_TO_PLAY), unit='episode'):
+    games_won += run_game()
+
+    if (i_episode%AGG_STATS_EVERY == 0):
+        print(f"Win rate: {games_won}/{i_episode}")
+
+print(f"Final win rate: {games_won}/{GAMES_TO_PLAY}")
