@@ -15,9 +15,9 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import tqdm
 
-MINESWEEPER_HEIGHT = 6
-MINESWEEPER_WIDTH = 6
-MINESWEEPER_N_MINES = 6
+MINESWEEPER_HEIGHT = 9
+MINESWEEPER_WIDTH = 9
+MINESWEEPER_N_MINES = 10
 
 import pickle
 

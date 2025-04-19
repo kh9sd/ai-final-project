@@ -18,6 +18,13 @@ Final win rate: 24/10000 = 0.0024
 
 On n_mines = random.randint(4,8)
 Final win rate: 111/10000 = 0.0111
+
+
+On 9x9, with 10 mines
+Final win rate: 1/10000 = 0.0001
+
+On n_mines = random.randint(8,12)
+Final win rate: 9/10000 = 0.0009
 """
 # Random
 
@@ -28,7 +35,17 @@ Final win rate: 4844/10000 = 0.4844
 On n_mines = random.randint(4,8)
 Final win rate: 4662/10000 = 0.4662
 """
-policy_model.load_state_dict(torch.load('models/Apr12_12-54-22_DESKTOP-L4QOK81_minesweeper/800000.h5'))
+#policy_model.load_state_dict(torch.load('models/Apr12_12-54-22_DESKTOP-L4QOK81_minesweeper/800000.h5'))
+
+
+"""
+On 9x9, with 10 mines
+Final win rate: 56/10000 = 0.0056
+
+On n_mines = random.randint(8,12)
+Final win rate: 132/10000 = 0.0132
+"""
+policy_model.load_state_dict(torch.load('models/Apr16_10-52-19_DESKTOP-L4QOK81_minesweeper/800000.h5'))
 #policy_model.load_state_dict(torch.load('models/Apr07_12-08-41_DESKTOP-L4QOK81_minesweeper/260000.h5'))
 policy_model.eval()
 
@@ -116,8 +133,8 @@ def env_state_to_tensor_batch_state(state):
 
 # returns 1 if won, 0 is lost
 def run_game():
-    n_mines = random.randint(4,8)
-    # n_mines = MINESWEEPER_N_MINES
+    #n_mines = MINESWEEPER_N_MINES
+    n_mines = random.randint(8,12)
 
     env = MinesweeperEnv(width=MINESWEEPER_WIDTH, height=MINESWEEPER_HEIGHT, n_mines=n_mines)
     past_n_wins = env.n_wins
@@ -125,10 +142,10 @@ def run_game():
 
     while not done:
         # Run with actual NN model
-        # action = select_action(env_state_to_tensor_batch_state(state))
+        action = select_action(env_state_to_tensor_batch_state(state))
 
         # Run with random model
-        action = select_action_random(env_state_to_tensor_batch_state(state))
+        # action = select_action_random(env_state_to_tensor_batch_state(state))
         # print(f"{action=}")
 
         new_state, _, new_done = env.step(action)
