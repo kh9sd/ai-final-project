@@ -14,6 +14,15 @@ n_actions = env.ntiles
 policy_model = DQN(n_actions = n_actions)
 """
 On 6x6, with 6 mines
+Final win rate: 24/10000 = 0.0024
+
+On n_mines = random.randint(4,8)
+Final win rate: 111/10000 = 0.0111
+"""
+# Random
+
+"""
+On 6x6, with 6 mines
 Final win rate: 4844/10000 = 0.4844
 
 On n_mines = random.randint(4,8)
@@ -75,7 +84,24 @@ def select_action(state):
 
     assert(shit.size() == (1,1))
     return shit
-    
+
+def select_action_random(state):
+    # print(f"{state.size()=}")
+    assert(state.size() == (1, 2, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
+    # print(f"{state=}")
+
+    flattened_board = state[0,1].reshape(1, env.ntiles)
+    #print(f"{flattened_board=}")
+    # expect to be 1 if unsolved
+    unsolved_mask = torch.ones(flattened_board.shape, dtype=torch.float32)
+
+    unsolved_action_tensor = torch.isclose(flattened_board, unsolved_mask)
+    #print(f"{unsolved_action_tensor=}")
+
+    unsolved_action_indices = [i for i, x in enumerate(unsolved_action_tensor[0]) if x == True]
+
+    return torch.tensor([[random.choice(unsolved_action_indices)]], dtype=torch.long)
+
 
 def env_state_to_tensor_batch_state(state):
     assert(state.shape == (2, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH))
@@ -98,7 +124,11 @@ def run_game():
     state, done = env.reset(), False
 
     while not done:
-        action = select_action(env_state_to_tensor_batch_state(state))
+        # Run with actual NN model
+        # action = select_action(env_state_to_tensor_batch_state(state))
+
+        # Run with random model
+        action = select_action_random(env_state_to_tensor_batch_state(state))
         # print(f"{action=}")
 
         new_state, _, new_done = env.step(action)
