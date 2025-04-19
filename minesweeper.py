@@ -105,7 +105,7 @@ class DQN(nn.Module):
 
         self.first_conv_layer = nn.Sequential(
             # TODO: I think 18 is fine?
-            nn.Conv2d(in_channels=2, out_channels=18, kernel_size=5, padding='same'),
+            nn.Conv2d(in_channels=2, out_channels=18, kernel_size=8, padding='same'),
             nn.ReLU()
         )
         
