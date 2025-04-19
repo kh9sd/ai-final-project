@@ -1,12 +1,9 @@
 from minesweeper_env import MinesweeperEnv
 
 import tqdm
+import random
 import torch
-from minesweeper import DQN
-
-MINESWEEPER_HEIGHT = 6
-MINESWEEPER_WIDTH = 6
-MINESWEEPER_N_MINES = 6
+from minesweeper import DQN, MINESWEEPER_HEIGHT, MINESWEEPER_WIDTH, MINESWEEPER_N_MINES
 
 env = MinesweeperEnv(width=MINESWEEPER_WIDTH, height=MINESWEEPER_HEIGHT, n_mines=MINESWEEPER_N_MINES)
 
@@ -15,7 +12,15 @@ print("playing new game")
 n_actions = env.ntiles
 
 policy_model = DQN(n_actions = n_actions)
-policy_model.load_state_dict(torch.load('models/Apr07_12-08-41_DESKTOP-L4QOK81_minesweeper/260000.h5'))
+"""
+On 6x6, with 6 mines
+Final win rate: 4844/10000 = 0.4844
+
+On n_mines = random.randint(4,8)
+Final win rate: 4662/10000 = 0.4662
+"""
+policy_model.load_state_dict(torch.load('models/Apr12_12-54-22_DESKTOP-L4QOK81_minesweeper/800000.h5'))
+#policy_model.load_state_dict(torch.load('models/Apr07_12-08-41_DESKTOP-L4QOK81_minesweeper/260000.h5'))
 policy_model.eval()
 
 # Returns tensor of size =torch.Size([1, 1])
@@ -85,6 +90,10 @@ def env_state_to_tensor_batch_state(state):
 
 # returns 1 if won, 0 is lost
 def run_game():
+    n_mines = random.randint(4,8)
+    # n_mines = MINESWEEPER_N_MINES
+
+    env = MinesweeperEnv(width=MINESWEEPER_WIDTH, height=MINESWEEPER_HEIGHT, n_mines=n_mines)
     past_n_wins = env.n_wins
     state, done = env.reset(), False
 
@@ -101,7 +110,7 @@ def run_game():
 
 
 AGG_STATS_EVERY = 100 # calculate stats every 100
-GAMES_TO_PLAY = 1_000_000
+GAMES_TO_PLAY = 10_000
 games_won = 0
 
 print(f"Running {GAMES_TO_PLAY} games for verification")
@@ -112,4 +121,4 @@ for i_episode in tqdm.tqdm(range(1, GAMES_TO_PLAY), unit='episode'):
     if (i_episode%AGG_STATS_EVERY == 0):
         print(f"Win rate: {games_won}/{i_episode}")
 
-print(f"Final win rate: {games_won}/{GAMES_TO_PLAY}")
+print(f"Final win rate: {games_won}/{GAMES_TO_PLAY} = {games_won/GAMES_TO_PLAY}")

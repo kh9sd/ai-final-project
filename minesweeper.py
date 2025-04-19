@@ -15,9 +15,9 @@ from torch.utils.tensorboard import SummaryWriter
 import numpy as np
 import tqdm
 
-MINESWEEPER_HEIGHT = 9
-MINESWEEPER_WIDTH = 9
-MINESWEEPER_N_MINES = 10
+MINESWEEPER_HEIGHT = 6
+MINESWEEPER_WIDTH = 6
+MINESWEEPER_N_MINES = 6
 
 import pickle
 
@@ -105,7 +105,7 @@ class DQN(nn.Module):
 
         self.first_conv_layer = nn.Sequential(
             # TODO: I think 18 is fine?
-            nn.Conv2d(in_channels=2, out_channels=18, kernel_size=8, padding='same'),
+            nn.Conv2d(in_channels=2, out_channels=18, kernel_size=5, padding='same'),
             nn.ReLU()
         )
         
